@@ -1,1 +1,9 @@
+.otopsi-container .item, .grid-sizer{
+  width:23.5%;
+}
+
+.otopsi-container .gutter-sizer{
+  width:2%;
+}
+
 
