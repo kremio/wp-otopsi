@@ -105,6 +105,7 @@ class Otopsi{
 
     $defaults = array(
       'enable'=>0,
+      'wrapperClass'=>'otopsi',
       'term'=>'',
       'title'=>'',
       'taxonomy'=>'',
@@ -166,8 +167,8 @@ class Otopsi{
     <div class="otopsi_show_if_enabled" style="display: <?php echo $instance['enable']?'block':'none'; ?>">
 
       <p>
-      <label for="otopsi[title]"><?php _e( 'Title:' ); ?></label> 
-      <input class="widefat" id="otopsi[title]" name="otopsi[title]" type="text" value="<?php echo $instance['title']; ?>">
+      <label for="otopsi[wrapperClass]"><?php _e( 'Wrapper CSS class:' ); ?></label> 
+      <input class="widefat" id="otopsi[wrapperClass]" name="otopsi[wrapperClass]" type="text" value="<?php echo $instance['wrapperClass']; ?>">
       </p>
 
         <p>
@@ -414,21 +415,24 @@ class Otopsi{
 
     //start output buffering
     ob_start();
-
+    //Wrapping DIV
+?>
+<div class="<?php echo $instance['wrapperClass']; ?>">
+<?php
   //Show filtering options if enabled
   if( isset($instance['filtersEnabled']) && $instance['filtersEnabled'] ) :
 ?>
-<div class="otopsi-filters button-group">
-  <button data-filter="*">show all</button>
+  <div class="otopsi-filters button-group">
+    <button data-filter="*" class="is-checked">show all</button>
 <?php foreach($filters as $term){ ?>
-  <button data-filter=".<?php echo $term['slug']; ?>"><?php echo $term['name']; ?></button>
+    <button data-filter=".<?php echo $term['slug']; ?>"><?php echo $term['name']; ?></button>
 <?php } ?>
-</div>
+  </div>
 <?php endif; ?>
 
-<div class="otopsi-container">
-  <div class="grid-sizer"></div>
-  <div class="gutter-sizer"></div>
+  <div class="otopsi-container">
+    <div class="grid-sizer"></div>
+    <div class="gutter-sizer"></div>
 <?php
     $i = 0;
     if ($posts_query->have_posts()) : while ($posts_query->have_posts()) : $posts_query->the_post();
@@ -436,17 +440,16 @@ class Otopsi{
     global $post;
     //get the taxonomy for the post
 ?>
-  <div class="item <?php echo implode(" ",wp_get_post_terms( $post->ID, $taxonomy, array('fields' => 'slugs') ) ); ?>">
+    <div class="item <?php echo implode(" ",wp_get_post_terms( $post->ID, $taxonomy, array('fields' => 'slugs') ) ); ?>">
 <?php echo Otopsi::renderTemplate( $instance['contentTemplate'] ); ?>
-  </div>
+    </div>
 <?php
   endwhile;
 endif;
 ?>
-
-
-
   </div>
+</div>
+
 <script type="text/javascript" >
 
 jQuery( function(){
