@@ -17,14 +17,46 @@ function call_Otopsi() {
     new Otopsi();
 }
 
+function call_OtopsiAdmin() {
+    new OtopsiAdmin();
+}
+
+
 if ( is_admin() ) {
     add_action( 'load-post.php', 'call_Otopsi' );
     add_action( 'load-post-new.php', 'call_Otopsi' );
     //Setup AJAX handler to retrieve the terms of a taxonomy on the client side
     add_action( 'wp_ajax_otopsi_get_taxonomy_terms', array('Otopsi', 'get_taxonomy_terms') );
+    //Add an admin menu
+    add_action( 'admin_menu',  'call_OtopsiAdmin' );
 }
 //render the grid and filters if enabled for the page
 add_filter('the_content', array('Otopsi', 'render'), 100000 );
+
+class OtopsiAdmin{
+  /*
+   * Create the Administration menu
+   */
+  public function __construct() {
+    add_menu_page( 'Otopsi Admin', 'Otopsi', 'manage_options', 'otopsi_admin_menu', array( $this, 'shortcodes_admin' ), '' );
+    add_submenu_page( 'otopsi_admin_menu', 'Shortcodes', 'Create Shortcodes', 'manage_options', 'otopsi_admin_menu', array( $this, 'shortcodes_admin' ));
+    add_submenu_page( 'otopsi_admin_menu', 'Documentation', 'Documentation', 'manage_options', 'otopsi_documentation', array( $this, 'shortcodes_admin' ));
+  }
+
+  public function shortcodes_admin(){ // Main page
+    include('includes/admin/_header.php');
+    include('includes/admin/_shortcodes.php');
+    include('includes/admin/_footer.php');
+  }
+
+
+  public function documentation_page(){
+    include('includes/admin/_header.php');
+    include('includes/admin/_documentation.php');
+    include('includes/admin/_footer.php');
+  }
+
+}
 
 class Otopsi{
 
@@ -37,8 +69,12 @@ class Otopsi{
     add_action( 'add_meta_boxes_page', array( $this, 'add_meta_box' ) );
     //Save the meta data related to the Otopsi when the page is saved
     add_action( 'save_post', array( $this, 'save_meta_data' ) );
+
   }
 
+  /* 
+   * Setup the plugin settings interface on the page editor
+   */
   public function add_meta_box( $post_type ){
     add_meta_box(
       'otopsi_meta_box'
@@ -101,51 +137,9 @@ class Otopsi{
   public function render_meta_box_content($post){
 
     //Retrieve the Otopsi meta data for this page, if any
-    $instance = get_post_meta( $post->ID, OTOPSI_META_KEY, false )[0]; //Returns an array 
-
-    $defaults = array(
-      'enable'=>0,
-      'wrapperClass'=>'otopsi',
-      'term'=>'',
-      'title'=>'',
-      'taxonomy'=>'',
-      'posttype'=>'',
-      'filtersEnabled'=>1,
-      'layoutMode'=>'masonry',
-      'layoutModeOptions'=>'"columnWidth": ".grid-sizer",'."\n".'"gutter": ".gutter-sizer"',
-      'contentTemplate'=>'<a href="%the_permalink%" rel="bookmark" title="%the_title%"><img class="alignleft" src="%the_image%" alt="%the_title%" /></a>\n
-    <h1>%the_title%</h1>');
-    $instance = wp_parse_args((array) $instance, $defaults);
-
-    $layoutModes = array(
-      "masonry" => "Masonry",
-      "fitRows"=>"Fit rows",
-      "vertical"=>"Vertical",
-    );
-
-
-
-    // Add an nonce field so we can check for it later.
-		wp_nonce_field( 'otopsi_meta_box', 'otopsi_nonce' );
-
-            
-    $term_field = $instance['term'];
-
-		//$title = ! empty( $instance['title'] ) ? $instance['title'] : __( 'New title', 'text_domain' );
-    ?>
+    $instance = get_post_meta( $post->ID, OTOPSI_META_KEY, false )[0]; //Returns an array
+?>
     <script type="text/javascript" >
-
-    function onchangeTerm(term_field,value){
-      var data = {
-        action: 'otopsi_get_taxonomy_terms',
-        otopsi_term: value
-      };
-
-      // since 2.8 ajaxurl is always defined in the admin header and points to admin-ajax.php
-      jQuery.post(ajaxurl, data, function(response) {
-        jQuery('#'+term_field).html(response);
-      });
-    }
 
     function ontoggleOtopsi(value){
       //console.log(value);
@@ -164,6 +158,63 @@ class Otopsi{
       Enabled</label>
     </p>
 
+<?php 
+    Otopsi::renderInstanceEditForm( $instance );
+  }
+
+  public static function renderInstanceEditForm( $instance = array() ){
+
+    $defaults = array(
+      'enable'=>0,
+      'wrapperClass'=>'otopsi',
+      'term'=>'',
+      'title'=>'',
+      'taxonomy'=>'',
+      'posttype'=>'',
+      'filtersEnabled'=>1,
+      'layoutMode'=>'masonry',
+      'layoutModeOptions'=>'"columnWidth": ".grid-sizer",'."\n".'"gutter": ".gutter-sizer"',
+      'contentTemplate'=>'<a href="%the_permalink%" rel="bookmark" title="%the_title%" class="the_image"><img src="%the_image%" alt="%the_title%"/></a>
+<h3 class="the_title"><a href="%the_permalink%" rel="bookmark">%the_title%</a></h3>
+<p class="the_date">%the_date%</p>
+%the_excerpt%
+%the_category%');
+
+    $instance = wp_parse_args((array) $instance, $defaults);
+
+
+    $layoutModes = array(
+      "masonry" => "Masonry",
+      "fitRows"=>"Fit rows",
+      "vertical"=>"Vertical",
+    );
+
+
+
+    // Add an nonce field so we can check for it later.
+    wp_nonce_field( 'otopsi_meta_box', 'otopsi_nonce' );
+
+
+    $term_field = $instance['term'];
+
+    //$title = ! empty( $instance['title'] ) ? $instance['title'] : __( 'New title', 'text_domain' );
+?>
+    <script type="text/javascript" >
+
+    function onchangeTerm(term_field,value){
+      var data = {
+        action: 'otopsi_get_taxonomy_terms',
+          otopsi_term: value
+      };
+
+      // since 2.8 ajaxurl is always defined in the admin header and points to admin-ajax.php
+      jQuery.post(ajaxurl, data, function(response) {
+        jQuery('#'+term_field).html(response);
+      });
+    }
+
+    </script>
+
     <div class="otopsi_show_if_enabled" style="display: <?php echo $instance['enable']?'block':'none'; ?>">
 
       <p>
@@ -174,84 +225,84 @@ class Otopsi{
         <p>
             <label for="otopsi[taxonomy]"><?php _e('Taxonomy:', 'otopsi_textdomain'); ?></label> <!-- <?php echo $term_field ?> -->
             <select multiple="multiple" onchange="return onchangeTerm('otopsi_term',jQuery(this).val());" id="otopsi_taxonomy" name="otopsi[taxonomy][]" style="width:90%;">
-        <?php
-        $taxonomies = get_taxonomies(array('public' => true, 'show_ui' => true));
-        foreach ($taxonomies as $taxonomyslug) {
-            $taxonomy = get_taxonomy($taxonomyslug);
-            $option = '<option value="' . $taxonomyslug;
-            if (is_array($instance['taxonomy']) && in_array($taxonomyslug, $instance['taxonomy'])) {
-                $option .='" selected="selected';
-            }
-            $option .= '">';
-            $option .= $taxonomy->labels->name;
-            $option .= '</option>';
-            echo $option;
-        }
-        ?>
+<?php
+    $taxonomies = get_taxonomies(array('public' => true, 'show_ui' => true));
+    foreach ($taxonomies as $taxonomyslug) {
+      $taxonomy = get_taxonomy($taxonomyslug);
+      $option = '<option value="' . $taxonomyslug;
+      if (is_array($instance['taxonomy']) && in_array($taxonomyslug, $instance['taxonomy'])) {
+        $option .='" selected="selected';
+      }
+      $option .= '">';
+      $option .= $taxonomy->labels->name;
+      $option .= '</option>';
+      echo $option;
+    }
+?>
             </select>
         </p>
         <p>
             <label for="otopsi[term]"><?php _e('Term:', 'otopsi_textdomain'); ?></label>
             <select multiple="multiple" id="otopsi_term" name="otopsi[term][]" style="width:90%;">
-        <?php
-        if ($instance['taxonomy']) {
-            foreach ($instance['taxonomy'] as $itax) {
-                $terms = get_terms($itax, 'hide_empty=0&orderby=term_group');
-                $optGroupTaxonomy = "";
+<?php
+    if ($instance['taxonomy']) {
+      foreach ($instance['taxonomy'] as $itax) {
+        $terms = get_terms($itax, 'hide_empty=0&orderby=term_group');
+        $optGroupTaxonomy = "";
 
-                if (!is_wp_error($terms)) {
-                    foreach ($terms as $term) {
-                        $option = "";
-                        if ($optGroupTaxonomy != $term->taxonomy) {
-                            if ($optGroupTaxonomy) {
-                                $option .= '</optgroup>';
-                            }
-                            $optGroupTaxonomy = $term->taxonomy;
-                            $optGroupTaxonomyObj = get_taxonomy($optGroupTaxonomy);
-                            $option .= '<optgroup label="' . $optGroupTaxonomyObj->labels->name . '">';
-                        }
-                        $option .= '<option value="' . $term->taxonomy . ";" . $term->term_id;
-                        if (is_array($instance['term']) && in_array($term->taxonomy . ";" . $term->term_id, $instance['term'])) {
-                            $option .='" selected="selected';
-                        }
-                        $option .= '">';
-                        $option .= $term->name;
-                        $option .= ' (' . $term->count . ')';
-                        $option .= '</option>';
-                        echo $option;
-                    }
-                }
-                if ($optGroupTaxonomy) {
-                    echo '</optgroup>';
-                }
+        if (!is_wp_error($terms)) {
+          foreach ($terms as $term) {
+            $option = "";
+            if ($optGroupTaxonomy != $term->taxonomy) {
+              if ($optGroupTaxonomy) {
+                $option .= '</optgroup>';
+              }
+              $optGroupTaxonomy = $term->taxonomy;
+              $optGroupTaxonomyObj = get_taxonomy($optGroupTaxonomy);
+              $option .= '<optgroup label="' . $optGroupTaxonomyObj->labels->name . '">';
             }
-        } else {
-            ?>
+            $option .= '<option value="' . $term->taxonomy . ";" . $term->term_id;
+            if (is_array($instance['term']) && in_array($term->taxonomy . ";" . $term->term_id, $instance['term'])) {
+              $option .='" selected="selected';
+            }
+            $option .= '">';
+            $option .= $term->name;
+            $option .= ' (' . $term->count . ')';
+            $option .= '</option>';
+            echo $option;
+          }
+        }
+        if ($optGroupTaxonomy) {
+          echo '</optgroup>';
+        }
+      }
+    } else {
+?>
                     <option value="0"><?php _e('Choose taxonomy:', 'otopsi_textdomain'); ?></option>
-                    <?php
-                }
-                ?>
+<?php
+    }
+?>
             </select>
         </p>
         <p>
             <label for="otopsi[posttype]"><?php _e('Post types:', 'otopsi_textdomain'); ?></label>
             <select multiple="multiple"  id="otopsi[posttype]" name="otopsi[posttype][]" style="width:90%;">
-        <?php
-        $post_types = get_post_types(array('public' => true, 'show_ui' => true));
+<?php
+    $post_types = get_post_types(array('public' => true, 'show_ui' => true));
 
-        foreach ($post_types as $post_type) {
-            $pt = get_post_type_object($post_type);
+    foreach ($post_types as $post_type) {
+      $pt = get_post_type_object($post_type);
 
-            $option = '<option value="' . $post_type;
-            if (is_array($instance['posttype']) && in_array($post_type, $instance['posttype'])) {
-                $option .='" selected="selected';
-            }
-            $option .= '">';
-            $option .= $pt->labels->singular_name;
-            $option .= '</option>';
-            echo $option;
-        }
-        ?>
+      $option = '<option value="' . $post_type;
+      if (is_array($instance['posttype']) && in_array($post_type, $instance['posttype'])) {
+        $option .='" selected="selected';
+      }
+      $option .= '">';
+      $option .= $pt->labels->singular_name;
+      $option .= '</option>';
+      echo $option;
+    }
+?>
             </select>
         </p>
 
@@ -259,23 +310,24 @@ class Otopsi{
           <label for="otopsi[filtersEnabled]">
           <input type="checkbox" name="otopsi[filtersEnabled]" id="otopsi[filtersEnabled]" value="1" <?php echo $instance['filtersEnabled']?' checked="checked"':''; ?>>
           <?php _e('Enable filtering:', 'otopsi_textdomain'); ?></label>
- 
+
         <p>
           <label for="otopsi[contentTemplate]"><?php _e('Item content template:', 'otopsi_textdomain'); ?></label>
           <textarea id="otopsi[contentTemplate]" name="otopsi[contentTemplate]" style="width:90%;">
 <?php echo $instance['contentTemplate']; ?>          
           </textarea>
+          <span>Wordpress template tags <a href="http://codex.wordpress.org/Template_Tags" target="_blank">reference.</a></span>
         </p>
 
         <p>
           <label for="otopsi[layoutMode]"><?php _e('Isotope layout mode:', 'otopsi_textdomain'); ?></label>
           <select id="otopsi[layoutMode]" name="otopsi[layoutMode]" style="width:90%;">
 <?php
-        foreach($layoutModes as $layoutCode => $layoutName){
+    foreach($layoutModes as $layoutCode => $layoutName){
 ?>
   <option value="<?php echo $layoutCode; ?>"<?php echo $instance['layoutMode']==$layoutCode ?'  selected="selected"':""?>><?php echo $layoutName; ?></option>
 <?php
-  }
+    }
 ?>
           </select> 
         </p>
@@ -290,8 +342,9 @@ class Otopsi{
 </div>
 
 
-		<?php 
+<?php 
   }
+
 
   /* Render a template tag */
   public static function renderTag( $tag ){
