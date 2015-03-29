@@ -8,7 +8,22 @@ Version: 0.1
 Author URI: http://j-u-t-t-u.net/
  */
 
+/*
+TODO:
+Add option to control the number of post returned and the sorting on DB query
+Documentation
+Template Custom CSS
+ */
+
 define('OTOPSI_META_KEY', "otopsi_meta");
+define('OTOPSI_SC_NAME', "otopsi");
+define('OTOPSI_SC_KEY', "otopsi_sc_key");
+define('OTOPSI_SC_DATA', "otopsi_sc_data");
+
+
+//Setup initial state when the plugin is activated
+register_activation_hook( __FILE__, 'activate' );
+
 
 /**
  * Calls the class on the post edit screen.
@@ -21,6 +36,26 @@ function call_OtopsiAdmin() {
     new OtopsiAdmin();
 }
 
+//Create a new OtopsiShortCode instance with the shortcode attributes
+function OtopsiShortCode($atts) {
+  if ( array_key_exists('id',$atts) && !empty( $atts['id'] ) ){ // Check if shortcode ID is passed
+    $scData = OtopsiAdmin::getShortCodesData();
+    if( array_key_exists($atts['id'], $scData) ){
+      $currentSc = $scData[ $atts['id'] ];
+      $currentSc['enable'] = 1;
+      return Otopsi::render( $currentSc );
+    }else{
+      return 'Otopsi : Could not find a shortcode with the ID '.$atts['id'];
+    }
+  }else{
+    return 'Otopsi : Shortcode ID empty or undefined.';
+  }
+}
+
+function activate(){
+  Otopsi::onActivation();
+}
+
 
 if ( is_admin() ) {
     add_action( 'load-post.php', 'call_Otopsi' );
@@ -31,7 +66,10 @@ if ( is_admin() ) {
     add_action( 'admin_menu',  'call_OtopsiAdmin' );
 }
 //render the grid and filters if enabled for the page
-add_filter('the_content', array('Otopsi', 'render'), 100000 );
+add_filter('the_content', array('Otopsi', 'renderInPost'), 100000 );
+
+add_shortcode( OTOPSI_SC_NAME, 'OtopsiShortCode');
+
 
 class OtopsiAdmin{
   /*
@@ -56,7 +94,43 @@ class OtopsiAdmin{
     include('includes/admin/_footer.php');
   }
 
+  public static function saveShortCode( &$scData, $mydata ){
+    if( !isset($mydata["sc_id"]) ){ //obtain a new shortcode id
+      $mydata["sc_id"] = get_option(OTOPSI_SC_KEY);
+      //update the shortcode id for next one
+      update_option(OTOPSI_SC_KEY, $mydata["sc_id"] + 1);
+    }
+
+    $scData[$mydata["sc_id"]]	= $mydata;
+    OtopsiAdmin::saveShortCodesData($scData);
+  }
+
+  /*
+   * Return the array containing data off all
+   */
+  public static function getShortCodesData(){
+    $scData	= json_decode( get_option(OTOPSI_SC_DATA), true );
+    if (empty($scData)):
+      return array();
+    endif;
+    
+    return $scData;
+  }
+
+  /*
+   * Save the shortcodes data
+   */
+  public static function saveShortCodesData($scData){
+    update_option(OTOPSI_SC_DATA,json_encode( $scData, JSON_HEX_APOS | JSON_HEX_QUOT ) );
+  }
+
+
 }
+
+// SHORTCODE
+
+
+
 
 class Otopsi{
 
@@ -70,6 +144,16 @@ class Otopsi{
     //Save the meta data related to the Otopsi when the page is saved
     add_action( 'save_post', array( $this, 'save_meta_data' ) );
 
+  }
+  
+  /*
+   * When plugin gets activated or updated.
+   */
+  public static function onActivation(){
+    $primaryKey = get_option(OTOPSI_SC_KEY);
+    if (empty($primaryKey)){
+      update_option(OTOPSI_SC_KEY,'1');
+    }
   }
 
   /* 
@@ -93,19 +177,9 @@ class Otopsi{
     /*
 		 * We need to verify this came from the our screen and with proper authorization,
 		 * because save_post can be triggered at other times.
-		 */
+     */
 
-
-		// Check if our nonce is set.
-		if ( ! isset( $_POST['otopsi_nonce'] ) )
-			return $post_id;
-
-		$nonce = $_POST['otopsi_nonce'];
-		// Verify that the nonce is valid.
-		if ( ! wp_verify_nonce( $nonce, 'otopsi_meta_box' ) )
-			return $post_id;
-
-		// If this is an autosave, our form has not been submitted,
+    		// If this is an autosave, our form has not been submitted,
                 //     so we don't want to do anything.
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
 			return $post_id;
@@ -121,14 +195,36 @@ class Otopsi{
       return $post_id;
     }
 
-    // Sanitize the user input
-    $mydata = $_POST['otopsi'];
-    $mydata['title'] = sanitize_text_field( $mydata['title'] );
 
+    $mydata = Otopsi::parseFormDataPost();
+
+    if( $mydata === FALSE || $mydata['enable'] != 1 ){ //the nonce is not valid or the plugin is not enabled
+      return $post_id;
+    }
+   
     // Update the meta field.
     update_post_meta( $post_id, OTOPSI_META_KEY, $mydata );
 
     return $post_id;
+  }
+
+  public static function parseFormDataPost(){
+
+    	// Check if our nonce is set.
+		if ( ! isset( $_POST['otopsi_nonce'] ) )
+			return FALSE;
+
+		$nonce = $_POST['otopsi_nonce'];
+		// Verify that the nonce is valid.
+		if ( ! wp_verify_nonce( $nonce, 'otopsi_meta_box' ) )
+			return FALSE;
+
+     // Sanitize the user input
+    $mydata = $_POST['otopsi'];
+    //$mydata['title'] = sanitize_text_field( $mydata['title'] );
+
+    return $mydata;
+
   }
 
   /*
@@ -137,7 +233,14 @@ class Otopsi{
   public function render_meta_box_content($post){
 
     //Retrieve the Otopsi meta data for this page, if any
-    $instance = get_post_meta( $post->ID, OTOPSI_META_KEY, false )[0]; //Returns an array
+    //Returns an array
+
+    $metaData = get_post_meta( $post->ID, OTOPSI_META_KEY, false );
+    if( !empty($metaData) ){
+      $instance = $metaData[0];
+    }else{
+      $instance = array('enable'=>0);
+    }
 ?>
     <script type="text/javascript" >
 
@@ -172,8 +275,13 @@ class Otopsi{
       'taxonomy'=>'',
       'posttype'=>'',
       'filtersEnabled'=>1,
-      'layoutMode'=>'masonry',
-      'layoutModeOptions'=>'"columnWidth": ".grid-sizer",'."\n".'"gutter": ".gutter-sizer"',
+      'isotopeOptions'=>'
+      "itemSelector": ".item",
+      "layoutMode": "masonry",
+      "masonry":{
+        "columnWidth": ".grid-sizer",
+          "gutter": ".gutter-sizer"
+      }',
       'contentTemplate'=>'<a href="%the_permalink%" rel="bookmark" title="%the_title%" class="the_image"><img src="%the_image%" alt="%the_title%"/></a>
 <h3 class="the_title"><a href="%the_permalink%" rel="bookmark">%the_title%</a></h3>
 <p class="the_date">%the_date%</p>
@@ -182,13 +290,13 @@ class Otopsi{
 
     $instance = wp_parse_args((array) $instance, $defaults);
 
-
+/*
     $layoutModes = array(
       "masonry" => "Masonry",
       "fitRows"=>"Fit rows",
       "vertical"=>"Vertical",
     );
-
+ */
 
 
     // Add an nonce field so we can check for it later.
@@ -314,28 +422,15 @@ class Otopsi{
         <p>
           <label for="otopsi[contentTemplate]"><?php _e('Item content template:', 'otopsi_textdomain'); ?></label>
           <textarea id="otopsi[contentTemplate]" name="otopsi[contentTemplate]" style="width:90%;">
-<?php echo $instance['contentTemplate']; ?>          
+<?php echo stripslashes( $instance['contentTemplate'] ); ?>          
           </textarea>
           <span>Wordpress template tags <a href="http://codex.wordpress.org/Template_Tags" target="_blank">reference.</a></span>
         </p>
 
         <p>
-          <label for="otopsi[layoutMode]"><?php _e('Isotope layout mode:', 'otopsi_textdomain'); ?></label>
-          <select id="otopsi[layoutMode]" name="otopsi[layoutMode]" style="width:90%;">
-<?php
-    foreach($layoutModes as $layoutCode => $layoutName){
-?>
-  <option value="<?php echo $layoutCode; ?>"<?php echo $instance['layoutMode']==$layoutCode ?'  selected="selected"':""?>><?php echo $layoutName; ?></option>
-<?php
-    }
-?>
-          </select> 
-        </p>
-
-        <p>
-          <label for="otopsi[layoutModeOptions]"><?php _e('Isotope layout options:', 'otopsi_textdomain'); ?></label>
-          <textarea id="otopsi[layoutModeOptions]" name="otopsi[layoutModeOptions]]" style="width:90%;">
-<?php echo $instance['layoutModeOptions']; ?>
+          <label for="otopsi[isotopeOptions]"><?php _e('Isotope options:', 'otopsi_textdomain'); ?></label>
+          <textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" style="width:90%;">
+<?php echo stripslashes( $instance['isotopeOptions'] ); ?>
           </textarea> 
         </p>
 
@@ -383,17 +478,8 @@ class Otopsi{
   }
 
 
-/**
-	 * Front-end display of widget.
-	 *
-	 * @see WP_Widget::widget()
-	 *
-	 * @param array $args     Widget arguments.
-	 * @param array $instance Saved values from database.
-	 */
-  public static function render( $post_content ){
-		
-		global $post;
+  public static function renderInPost( $post_content ){
+    global $post;
 		
     $meta_code = '';
 
@@ -410,8 +496,19 @@ class Otopsi{
       return $post_content;
     }
 
+    return $post_content."\n".Otopsi::render( $instance );
+
+  }
+
+/**
+ *
+ * Render an Instance of the plugin in a string and returns it.
+ *
+ */
+  public static function render( $instance ){
+		
+		
     /* The settings. */
-    $title = $instance['title'];
     $taxonomy = $instance['taxonomy'];
     $terms = $instance['term'];
 
@@ -463,14 +560,13 @@ class Otopsi{
 
     //Load JS
     wp_enqueue_script("isotope-js", plugins_url( "js/isotope.pkgd.min.js", __FILE__ ) );
-
-    //wp_enqueue_script("jquery1.11", "https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js");
+    wp_enqueue_script("otopsi-js", plugins_url( "js/otopsi.js", __FILE__ ) );
 
     //start output buffering
     ob_start();
     //Wrapping DIV
 ?>
-<div class="<?php echo $instance['wrapperClass']; ?>">
+  <div class="<?php echo $instance['wrapperClass']; ?> otopsi-init" data-otopsi="<?php echo str_replace(array("\r\n", "\r"), "", trim( htmlentities( stripslashes( $instance['isotopeOptions']) ) ) ); ?>">
 <?php
   //Show filtering options if enabled
   if( isset($instance['filtersEnabled']) && $instance['filtersEnabled'] ) :
@@ -494,7 +590,7 @@ class Otopsi{
     //get the taxonomy for the post
 ?>
     <div class="item <?php echo implode(" ",wp_get_post_terms( $post->ID, $taxonomy, array('fields' => 'slugs') ) ); ?>">
-<?php echo Otopsi::renderTemplate( $instance['contentTemplate'] ); ?>
+<?php echo Otopsi::renderTemplate( stripslashes( $instance['contentTemplate'] ) ); ?>
     </div>
 <?php
   endwhile;
@@ -506,30 +602,7 @@ endif;
 <script type="text/javascript" >
 
 jQuery( function(){
-  var $container = jQuery(".otopsi-container").isotope({
-    "itemSelector": ".item",
-    "layoutMode": '<?php echo $instance['layoutMode']; ?>',
-    "<?php echo $instance['layoutMode']; ?>":{
-    <?php echo $instance['layoutModeOptions']; ?>
-    }
-  });
-
-  jQuery('.otopsi-filters').on( 'click', 'button', function() {
-    var filterValue = jQuery( this ).attr('data-filter');
-    // use filterFn if matches value
-    //filterValue = filterFns[ filterValue ] || filterValue;
-    $container.isotope({ filter: filterValue });
-  });
-
-  // change is-checked class on buttons
-  jQuery('.button-group').each( function( i, buttonGroup ) {
-    var $buttonGroup = jQuery( buttonGroup );
-    $buttonGroup.on( 'click', 'button', function() {
-      $buttonGroup.find('.is-checked').removeClass('is-checked');
-      jQuery( this ).addClass('is-checked');
-    });
-  });
-
+ Otopsi(); 
 });
 
 </script>
@@ -539,7 +612,8 @@ jQuery( function(){
 $bufferContent = ob_get_contents(); 
 //Stop buffering and discard content
 ob_end_clean();
-return $post_content."\n".$bufferContent;
+
+return $bufferContent;
   }
 
 
