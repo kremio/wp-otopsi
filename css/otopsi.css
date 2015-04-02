@@ -24,51 +24,6 @@
 }
 
 
-/* Style for each items */
-.otopsi-container .item{
-  font-family: Domine, Georgia, serif;
-  border-bottom: 1px solid grey;
-  margin-bottom: 2.2em;
-  padding-bottom: 0.6em;
-}
-
-.otopsi-container .the_image{
-  opacity:1;
-  transition: opacity 0.5s;
-}
-
-.otopsi-container .the_image:hover{
-  opacity:0.8;
-}
-
-.otopsi-container .the_title{
-   margin-bottom: 0.2em; 
-}
-
-.otopsi-container a{
-  text-decoration: none !important;
-}
-
-.otopsi-container .the_date{
- font-weight:bold;
- display:block;
-}
-
-.otopsi-container p{
-  display:inline;
-}
-
-.otopsi-container .morelink-icon{
-    font-size: 0;
-    display:inline;
-}
-
-.otopsi-container .morelink-icon:after{
-  content:'»';
-  vertical-align: text-bottom;
-}
-
-
 /* Responsive column count */
 .otopsi-container .item, .grid-sizer{
   width:100%;
@@ -99,21 +54,4 @@
   }
 
 }
-
-/* Add you custom styles below */
-/* The whole Otopsi container with filters and all */
-.otopsi-doodle{
-	border:2px solid red;
-} 
-
-  .otopsi-doodle .gutter-sizer{
-    width:5px;
-  }
-
-/* The items inside the Otopsi container */
-.otopsi-doodle .item{
-	border-bottom: none;
-	border-left: 1px solid grey;
-}
-
 

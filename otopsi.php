@@ -221,6 +221,7 @@ class Otopsi{
       'taxonomy'=>'', //(Array) - Configure which taxonomies are included  
       'term'=>'', //(Array) - Configure which terms of the taxonomies are included
       'posttype'=>'',//(Array) - Limit search to the specified post types
+      'limit'=>10, //Integer - Limit the number of posts returned
       /*
        * Isotope settings
        */
@@ -432,13 +433,27 @@ class Otopsi{
         </tr>
 
         <tr valign="top">
+          <th><label for="otopsi[limit]"><?php _e('Limit number of items to:', 'otopsi_textdomain'); ?></label>
+          <p>-1 : no limit</p></th>
+          <td><input type="number" name="otopsi[limit]" id="otopsi[limit]" value="<?php echo $instance['limit']; ?>"/></td>
+          
+        </tr>
+
+
+        <tr valign="top">
           <th><label for="otopsi[filtersEnabled]"><?php _e('Enable filtering:', 'otopsi_textdomain'); ?></label></th>
           <td><input type="checkbox" name="otopsi[filtersEnabled]" id="otopsi[filtersEnabled]" value="1" <?php echo $instance['filtersEnabled']?' checked="checked"':''; ?>></td>
         </tr>
 
         <tr valign="top">
-          <th><label for="otopsi[contentTemplate]"><?php _e('Item content template:', 'otopsi_textdomain'); ?></label></th>
-          <td><textarea id="otopsi[contentTemplate]" name="otopsi[contentTemplate]" style="width:90%;">
+          <th>
+            <label for="otopsi[contentTemplate]"><?php _e('Item content template:', 'otopsi_textdomain'); ?></label>
+            <p>Enter any valid HTML code and use placeholders in the format %template_tag_name% to configure
+               what part of the post will be displayed.<br>
+               Use the special tag name %the_image% to retrieve the URL of the image of the post.
+            </p>
+        </th>
+          <td><textarea id="otopsi[contentTemplate]" name="otopsi[contentTemplate]" style="width:90%; height: 10em;">
 <?php echo stripslashes( $instance['contentTemplate'] ); ?>          
           </textarea>
           <p>See Wordpress template tags <a href="http://codex.wordpress.org/Template_Tags" target="_blank">reference.</a></p>
@@ -447,9 +462,12 @@ class Otopsi{
 
         <tr valign="top">
           <th><label for="otopsi[isotopeOptions]"><?php _e('Isotope options:', 'otopsi_textdomain'); ?></label></th>
-          <td><textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" style="width:90%;">
+          <td><textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" style="width:90%; height: 10em;">
 <?php echo stripslashes( $instance['isotopeOptions'] ); ?>
-          </textarea></td>
+          </textarea>
+          <p>See Isotope options <a href="http://isotope.metafizzy.co/options.html" target="_blank">reference.</a></p>
+          </td>
+          
         </tr>
 
 </table>
@@ -518,51 +536,57 @@ class Otopsi{
    * Execute a WordPress psot query based on the settings of an instance
    * $instance: associative array specifying the search parameters
    * $filters: array passed by referenece which will contain the filtering terms when the function returns
-   * returns a WP_Query instance (see https://codex.wordpress.org/Class_Reference/WP_Query
+   * returns a WP_Query instance
+   * (see https://codex.wordpress.org/Class_Reference/WP_Query and https://gist.github.com/luetkemj/2023628)
    */
   public static function searchBlog( $instance, &$filters ){
-     /* The settings. */
-    $taxonomy = $instance['taxonomy'];
+
+    //constructor options for WP_Query
+    $args = array(
+      'post_type' => $instance['posttype'],
+      'posts_per_page' => $instance['limit'],
+      'orderby' => 'date',
+      'order' => 'DESC'
+    ); 
+
+    //Create the query search conditions based on the taxonomies and terms provided
     $terms = $instance['term'];
-
-
-    $posts = 10;//$instance['posts'];
-    $posttypes = $instance['posttype'];
-
-    //Setup the posts query
-    $query_terms = array();
-    $first_term = null;
+    $taxonomies_terms = array();
 
     if (is_array($terms)) {
       foreach ($terms as $term) {
-        $term = explode(";", $term);
-        if (isset($term[1])) {
-          $term_array = get_term_by('id', $term[1], $term[0], 'ARRAY_A');
-          $filters[] = $term_array;
-          if (!$first_term) {
-            $first_term = $term_array;
-          }
-          if (isset($query_terms[$term[0]])) {
-            $query_terms[$term[0]] = $query_terms[$term[0]] . "," . $term_array["slug"];
-          } else {
-            $query_terms[$term[0]] = $term_array["slug"];
-          }
+        list($taxonomyName, $termId) = explode(";", $term);
+        if( !isset( $termId ) ) {
+          continue;
+        }
+        
+        $term_array = get_term_by('id', $termId, $taxonomyName, 'ARRAY_A');
+        $filters[] = $term_array;
+
+        if ( !isset( $taxonomies_terms[$taxonomyName] ) ) {
+          $taxonomies_terms[$taxonomyName] = array(
+            'taxonomy'=>$taxonomyName,
+            'field'=>'slug',
+            'terms'=> $term_array["slug"],
+            'include_children' => true,
+            'operator' => 'IN'
+          );
+        } else {
+          $taxonomies_terms[$taxonomyName]['terms'] .= "," . $term_array["slug"];
         }
       }
     }
 
-    if (isset($query_terms['category'])) {
-      $query_terms['category_name'] = $query_terms['category'];
+
+    if ( isset($taxonomies_terms['category']) ) { //For the category taxonomy use the special field 'category_name'
+      $args['category_name'] = $taxonomies_terms['category']['terms'];
+      unset( $taxonomies_terms['category'] );
     }
 
-    
+    //The taxonomy query
+    $args['tax_query'] = array('relation' => 'OR');
+    $args['tax_query'] = array_merge( $args['tax_query'], array_values($taxonomies_terms ) );
 
-    $args = $query_terms;
-
-    $args['showposts'] = $posts;
-    $args['orderby'] = 'date';
-    $args['order'] = 'DESC';
-    $args['post_type'] = $posttypes;
 
     //Run the query
     return new WP_Query($args);
@@ -585,7 +609,9 @@ class Otopsi{
 
 
     //Load CSS
-    wp_enqueue_style("otopsi-style", plugins_url( "css/otopsi.css", __FILE__ ) );
+    wp_enqueue_style("otopsi-base-style", plugins_url( "css/otopsi.css", __FILE__ ) );
+    wp_enqueue_style("otopsi-custom-style", plugins_url( "css/custom.css", __FILE__ ) );
+
 
     //Load JS
     wp_enqueue_script("isotope-js", plugins_url( "js/isotope.pkgd.min.js", __FILE__ ) );
@@ -598,11 +624,15 @@ class Otopsi{
   <div class="<?php echo $instance['wrapperClass']; ?> otopsi-init" data-otopsi="<?php echo str_replace(array("\r\n", "\r"), "", trim( htmlentities( stripslashes( $instance['isotopeOptions']) ) ) ); ?>">
 <?php
   //Show filtering options if enabled
+  $filterSlugs = array();
   if( isset($instance['filtersEnabled']) && $instance['filtersEnabled'] ) :
 ?>
   <div class="otopsi-filters button-group">
     <button data-filter="*" class="is-checked">show all</button>
-<?php foreach($filters as $term){ ?>
+<?php
+    foreach($filters as $term){
+      $filterSlugs[$term['term_id']] = $term['slug'];
+?>
     <button data-filter=".<?php echo $term['slug']; ?>"><?php echo $term['name']; ?></button>
 <?php } ?>
   </div>
@@ -616,9 +646,27 @@ class Otopsi{
     if ($posts_query->have_posts()) : while ($posts_query->have_posts()) : $posts_query->the_post();
       $i++;
     global $post;
-    //get the taxonomy for the post
+    //get the filtering terms for the post
+    $postTerms = wp_get_post_terms( $post->ID, $taxonomies, array('fields' => 'all') );
+    $postFilterTerms = array();
+    foreach( $postTerms as $postTerm ){
+      //Directly match a filtering term
+      if( isset($filterSlugs[ $postTerm->term_id ]) ){
+        $postFilterTerms[] = $postTerm->slug; 
+        continue;
+      }
+
+      //Find the parent term
+      if( isset($filterSlugs[ $postTerm->parent ]) ){
+        $postFilterTerms[] = $filterSlugs[$postTerm->parent ];
+        continue;
+      }
+
+      //WRNING: won't be filtered properly
+      $postFilterTerms[] = $postTerm->slug;
+    }
 ?>
-    <div class="item <?php echo implode(" ",wp_get_post_terms( $post->ID, $taxonomies, array('fields' => 'slugs') ) ); ?>">
+    <div class="item <?php echo implode(" ", $postFilterTerms); ?>">
 <?php echo Otopsi::renderTemplate( stripslashes( $instance['contentTemplate'] ) ); ?>
     </div>
 <?php

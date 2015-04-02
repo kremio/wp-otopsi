@@ -1,0 +1,86 @@
+/*
+ Edit this stylesheet to create a custom look for your
+ Otopsi plugins.
+ 
+ A. General class names
+
+ Otopsi provides the following class names that you can use:
+  .otopsi : DIV wrapper around the entire plugin instance
+  .otopsi-filters : DIV wrapping the Filtering buttons
+  .otopsi-filters .is-checked : The current selected filter button
+  .otopsi-container : DIV wrapping all the items
+  .otopsi-container .item : DIV wrapping each items individually
+
+  If you are using the default Isotope options set by Otopsi,
+  then you can use the following classes to set the dimensions of the items
+  and their spacing:
+    .otopsi-container .grid-sizer : Set the dimension of each item
+    .otopsi-container .gutter-sizer : Set space between two items
+  See the Isotope documentation for more information: http://isotope.metafizzy.co/options.html
+  
+  Have a look otopsi.css files for an example on how you can use these classes to make the layout responsive
+
+
+  For even more control, and for the possibility to have several instances of the
+  plugin on the same page or post with different styles, set a custom wrapper CSS class when you
+  create an instance of Otopsi using the page editor or the short code editor.
+  This custom class will be applied to the main DIV wrapper with the 'otopsi' class name.
+
+  For instance, is you have set the custom class name for one of your shortcode to 'my-custom-otopsi',
+  you could add a border around each instance of this particular shortcode by adding the following rule to this file:
+  .my-custom-otopsi{
+    border: 1px solid #BADA55;
+  }
+
+
+  B. Content styling
+
+  To style the content of each item, use the item content template setting to set class names for the
+  element you want to target. Have a look below for Otopsi's default style applied to the default content template.
+ 
+ */
+
+/* DIV wrapping each items separatly */
+.otopsi-container .item{
+  font-family: Domine, Georgia, serif;
+  border-bottom: 1px solid grey;
+  margin-bottom: 2.2em;
+  padding-bottom: 0.6em;
+}
+
+/* Style the content of each item using classes defined in the item content template */
+.otopsi-container .the_image{
+  opacity:1;
+  transition: opacity 0.5s;
+}
+
+.otopsi-container .the_image:hover{
+  opacity:0.8;
+}
+
+.otopsi-container .the_title{
+   margin-bottom: 0.2em; 
+}
+
+.otopsi-container a{
+  text-decoration: none !important;
+}
+
+.otopsi-container .the_date{
+ font-weight:bold;
+ display:block;
+}
+
+.otopsi-container p{
+  display:inline;
+}
+
+.otopsi-container .morelink-icon{
+    font-size: 0;
+    display:inline;
+}
+
+.otopsi-container .morelink-icon:after{
+  content:'»';
+  vertical-align: text-bottom;
+}
