@@ -71,13 +71,14 @@ add_filter('the_content', array('Otopsi', 'renderInPost'), 100000 );
 add_shortcode( OTOPSI_SC_NAME, 'OtopsiShortCode');
 
 
+// SHORTCODE
 class OtopsiAdmin{
   /*
    * Create the Administration menu
    */
   public function __construct() {
     add_menu_page( 'Otopsi Admin', 'Otopsi', 'manage_options', 'otopsi_admin_menu', array( $this, 'shortcodes_admin' ), '' );
-    add_submenu_page( 'otopsi_admin_menu', 'Shortcodes', 'Create Shortcodes', 'manage_options', 'otopsi_admin_menu', array( $this, 'shortcodes_admin' ));
+    add_submenu_page( 'otopsi_admin_menu', 'Shortcodes', 'Manage Shortcodes', 'manage_options', 'otopsi_admin_menu', array( $this, 'shortcodes_admin' ));
     add_submenu_page( 'otopsi_admin_menu', 'Documentation', 'Documentation', 'manage_options', 'otopsi_documentation', array( $this, 'shortcodes_admin' ));
   }
 
@@ -127,12 +128,10 @@ class OtopsiAdmin{
 
 }
 
-// SHORTCODE
-
-
-
 
 class Otopsi{
+
+
 
   /**
    * Sets up the widgets name etc
@@ -179,8 +178,8 @@ class Otopsi{
 		 * because save_post can be triggered at other times.
      */
 
-    		// If this is an autosave, our form has not been submitted,
-                //     so we don't want to do anything.
+    // If this is an autosave, our form has not been submitted,
+    //     so we don't want to do anything.
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
 			return $post_id;
 
@@ -207,6 +206,41 @@ class Otopsi{
 
     return $post_id;
   }
+
+  /*
+   * Returns a default instance configuration.
+   */
+  public static function getDefaultConfig(){
+    return array(
+      'enable'=>0, //(0 or 1) - 0: the plugin won't render on the page (only applies in the context of a page, not for shortcodes)
+      'wrapperClass'=>'otopsi', //(String) - HTML class that allows to style the plugin layout from CSS
+      /* 
+       * Paraleters for the content search query.
+       * See https://codex.wordpress.org/Taxonomies
+       */
+      'taxonomy'=>'', //(Array) - Configure which taxonomies are included  
+      'term'=>'', //(Array) - Configure which terms of the taxonomies are included
+      'posttype'=>'',//(Array) - Limit search to the specified post types
+      /*
+       * Isotope settings
+       */
+      'filtersEnabled'=>1,//(0 or 1) - 0:disable filtering based on terms, 1:enable filtering based on terms
+      //see http://isotope.metafizzy.co/options.html
+      'isotopeOptions'=>
+'"itemSelector": ".item",
+"layoutMode": "masonry",
+"masonry":{
+  "columnWidth": ".grid-sizer",
+    "gutter": ".gutter-sizer"
+}',
+      //HTML template for the items content
+      'contentTemplate'=>'<a href="%the_permalink%" rel="bookmark" title="%the_title%" class="the_image"><img src="%the_image%" alt="%the_title%"/></a>
+      <h3 class="the_title"><a href="%the_permalink%" rel="bookmark">%the_title%</a></h3>
+      <p class="the_date">%the_date%</p>
+      %the_excerpt%
+      %the_category%');
+  }
+
 
   public static function parseFormDataPost(){
 
@@ -255,57 +289,31 @@ class Otopsi{
 
     </script>
 
-    <p>
-      <label for="otopsi[enable]">
-      <input type="checkbox" name="otopsi[enable]" id="otopsi[enable]" value="1" <?php echo $instance['enable']?' checked="checked"':''; ?>onchange="return ontoggleOtopsi(jQuery(this).is(':checked'));">
-      Enabled</label>
-    </p>
+    <table class="form-table">
+      <tr valign="top">
+      <th><label for="otopsi[enable]">Enable Otopsi</label></th>
+      <td><input type="checkbox" name="otopsi[enable]" id="otopsi[enable]" value="1" <?php echo $instance['enable']?' checked="checked"':''; ?>onchange="return ontoggleOtopsi(jQuery(this).is(':checked'));"></td>
+      </tr>
+    </table>
 
 <?php 
     Otopsi::renderInstanceEditForm( $instance );
   }
 
+  /*
+   * Render the HTML code for an isotope layout configuration form populated
+   * from an optional $instance associative array 
+   */
   public static function renderInstanceEditForm( $instance = array() ){
 
-    $defaults = array(
-      'enable'=>0,
-      'wrapperClass'=>'otopsi',
-      'term'=>'',
-      'title'=>'',
-      'taxonomy'=>'',
-      'posttype'=>'',
-      'filtersEnabled'=>1,
-      'isotopeOptions'=>'
-      "itemSelector": ".item",
-      "layoutMode": "masonry",
-      "masonry":{
-        "columnWidth": ".grid-sizer",
-          "gutter": ".gutter-sizer"
-      }',
-      'contentTemplate'=>'<a href="%the_permalink%" rel="bookmark" title="%the_title%" class="the_image"><img src="%the_image%" alt="%the_title%"/></a>
-<h3 class="the_title"><a href="%the_permalink%" rel="bookmark">%the_title%</a></h3>
-<p class="the_date">%the_date%</p>
-%the_excerpt%
-%the_category%');
 
-    $instance = wp_parse_args((array) $instance, $defaults);
-
-/*
-    $layoutModes = array(
-      "masonry" => "Masonry",
-      "fitRows"=>"Fit rows",
-      "vertical"=>"Vertical",
-    );
- */
-
+    $instance = wp_parse_args((array) $instance,  Otopsi::getDefaultConfig());
 
     // Add an nonce field so we can check for it later.
     wp_nonce_field( 'otopsi_meta_box', 'otopsi_nonce' );
 
 
     $term_field = $instance['term'];
-
-    //$title = ! empty( $instance['title'] ) ? $instance['title'] : __( 'New title', 'text_domain' );
 ?>
     <script type="text/javascript" >
 
@@ -323,17 +331,18 @@ class Otopsi{
 
     </script>
 
-    <div class="otopsi_show_if_enabled" style="display: <?php echo $instance['enable']?'block':'none'; ?>">
+    <table class="form-table otopsi_show_if_enabled" style="display: <?php echo $instance['enable']?'block':'none'; ?>">
+      <tr valign="top">
+        <th><label for="otopsi[wrapperClass]"><?php _e( 'Wrapper CSS class:' ); ?></label></th>
+        <td><input class="widefat" id="otopsi[wrapperClass]" name="otopsi[wrapperClass]" type="text" value="<?php echo $instance['wrapperClass']; ?>"></td>
+      </tr>
 
-      <p>
-      <label for="otopsi[wrapperClass]"><?php _e( 'Wrapper CSS class:' ); ?></label> 
-      <input class="widefat" id="otopsi[wrapperClass]" name="otopsi[wrapperClass]" type="text" value="<?php echo $instance['wrapperClass']; ?>">
-      </p>
-
-        <p>
-            <label for="otopsi[taxonomy]"><?php _e('Taxonomy:', 'otopsi_textdomain'); ?></label> <!-- <?php echo $term_field ?> -->
-            <select multiple="multiple" onchange="return onchangeTerm('otopsi_term',jQuery(this).val());" id="otopsi_taxonomy" name="otopsi[taxonomy][]" style="width:90%;">
+      <tr valign="top">
+        <th><label for="otopsi[taxonomy]"><?php _e('Taxonomy:', 'otopsi_textdomain'); ?></label></th>
+        <td><select multiple="multiple" onchange="return onchangeTerm('otopsi_term',jQuery(this).val());" id="otopsi_taxonomy" name="otopsi[taxonomy][]" style="width:90%;">
 <?php
+    //Taxonomies select
+    //Will update the content of the terms select on change.
     $taxonomies = get_taxonomies(array('public' => true, 'show_ui' => true));
     foreach ($taxonomies as $taxonomyslug) {
       $taxonomy = get_taxonomy($taxonomyslug);
@@ -348,11 +357,15 @@ class Otopsi{
     }
 ?>
             </select>
-        </p>
-        <p>
-            <label for="otopsi[term]"><?php _e('Term:', 'otopsi_textdomain'); ?></label>
-            <select multiple="multiple" id="otopsi_term" name="otopsi[term][]" style="width:90%;">
+          </td>
+        </tr>
+
+        <tr valign="top">
+        <th><label for="otopsi[term]"><?php _e('Term:', 'otopsi_textdomain'); ?></label></th>
+        <td><select multiple="multiple" id="otopsi_term" name="otopsi[term][]" style="width:90%;">
 <?php
+    //Terms select
+    //Will be updated when the content of the taxonomies select changes.
     if ($instance['taxonomy']) {
       foreach ($instance['taxonomy'] as $itax) {
         $terms = get_terms($itax, 'hide_empty=0&orderby=term_group');
@@ -391,11 +404,14 @@ class Otopsi{
     }
 ?>
             </select>
-        </p>
-        <p>
-            <label for="otopsi[posttype]"><?php _e('Post types:', 'otopsi_textdomain'); ?></label>
-            <select multiple="multiple"  id="otopsi[posttype]" name="otopsi[posttype][]" style="width:90%;">
+          </td>
+        </tr>
+
+        <tr valign="top">
+          <th><label for="otopsi[posttype]"><?php _e('Post types:', 'otopsi_textdomain'); ?></label></th>
+          <td><select multiple="multiple"  id="otopsi[posttype]" name="otopsi[posttype][]" style="width:90%;">
 <?php
+
     $post_types = get_post_types(array('public' => true, 'show_ui' => true));
 
     foreach ($post_types as $post_type) {
@@ -412,31 +428,31 @@ class Otopsi{
     }
 ?>
             </select>
-        </p>
+          </td>
+        </tr>
 
-        <p>
-          <label for="otopsi[filtersEnabled]">
-          <input type="checkbox" name="otopsi[filtersEnabled]" id="otopsi[filtersEnabled]" value="1" <?php echo $instance['filtersEnabled']?' checked="checked"':''; ?>>
-          <?php _e('Enable filtering:', 'otopsi_textdomain'); ?></label>
+        <tr valign="top">
+          <th><label for="otopsi[filtersEnabled]"><?php _e('Enable filtering:', 'otopsi_textdomain'); ?></label></th>
+          <td><input type="checkbox" name="otopsi[filtersEnabled]" id="otopsi[filtersEnabled]" value="1" <?php echo $instance['filtersEnabled']?' checked="checked"':''; ?>></td>
+        </tr>
 
-        <p>
-          <label for="otopsi[contentTemplate]"><?php _e('Item content template:', 'otopsi_textdomain'); ?></label>
-          <textarea id="otopsi[contentTemplate]" name="otopsi[contentTemplate]" style="width:90%;">
+        <tr valign="top">
+          <th><label for="otopsi[contentTemplate]"><?php _e('Item content template:', 'otopsi_textdomain'); ?></label></th>
+          <td><textarea id="otopsi[contentTemplate]" name="otopsi[contentTemplate]" style="width:90%;">
 <?php echo stripslashes( $instance['contentTemplate'] ); ?>          
           </textarea>
-          <span>Wordpress template tags <a href="http://codex.wordpress.org/Template_Tags" target="_blank">reference.</a></span>
-        </p>
+          <p>See Wordpress template tags <a href="http://codex.wordpress.org/Template_Tags" target="_blank">reference.</a></p>
+          </td>
+        </tr>
 
-        <p>
-          <label for="otopsi[isotopeOptions]"><?php _e('Isotope options:', 'otopsi_textdomain'); ?></label>
-          <textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" style="width:90%;">
+        <tr valign="top">
+          <th><label for="otopsi[isotopeOptions]"><?php _e('Isotope options:', 'otopsi_textdomain'); ?></label></th>
+          <td><textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" style="width:90%;">
 <?php echo stripslashes( $instance['isotopeOptions'] ); ?>
-          </textarea> 
-        </p>
+          </textarea></td>
+        </tr>
 
-</div>
-
-
+</table>
 <?php 
   }
 
@@ -471,9 +487,7 @@ class Otopsi{
 
   /* Render a template */
   public static function renderTemplate( $template ){
-    //echo "First\n";
     $r = preg_replace_callback ( "/%([^%\s]+)%/", "Otopsi::renderTag", $template); 
-    //echo "result:\n".$r;
     return $r;
   }
 
@@ -500,15 +514,14 @@ class Otopsi{
 
   }
 
-/**
- *
- * Render an Instance of the plugin in a string and returns it.
- *
- */
-  public static function render( $instance ){
-		
-		
-    /* The settings. */
+  /**
+   * Execute a WordPress psot query based on the settings of an instance
+   * $instance: associative array specifying the search parameters
+   * $filters: array passed by referenece which will contain the filtering terms when the function returns
+   * returns a WP_Query instance (see https://codex.wordpress.org/Class_Reference/WP_Query
+   */
+  public static function searchBlog( $instance, &$filters ){
+     /* The settings. */
     $taxonomy = $instance['taxonomy'];
     $terms = $instance['term'];
 
@@ -519,7 +532,7 @@ class Otopsi{
     //Setup the posts query
     $query_terms = array();
     $first_term = null;
-    $filters = array();
+
     if (is_array($terms)) {
       foreach ($terms as $term) {
         $term = explode(";", $term);
@@ -537,6 +550,7 @@ class Otopsi{
         }
       }
     }
+
     if (isset($query_terms['category'])) {
       $query_terms['category_name'] = $query_terms['category'];
     }
@@ -545,15 +559,30 @@ class Otopsi{
 
     $args = $query_terms;
 
-    //print_r($filters);
-
     $args['showposts'] = $posts;
     $args['orderby'] = 'date';
     $args['order'] = 'DESC';
     $args['post_type'] = $posttypes;
 
     //Run the query
-    $posts_query = new WP_Query($args);
+    return new WP_Query($args);
+  }
+
+/**
+ *
+ * Render an Instance of the plugin in a string and returns it.
+ *
+ */
+  public static function render( $instance ){
+    
+    //Used to tag the items for interactive filtering on the client side
+    $taxonomies = $instance['taxonomy'];
+    $terms = $instance['term'];
+    $filters = array();
+
+    //Retrieve the posts to render
+    $posts_query = Otopsi::searchBlog( $instance, $filters );
+
 
     //Load CSS
     wp_enqueue_style("otopsi-style", plugins_url( "css/otopsi.css", __FILE__ ) );
@@ -589,7 +618,7 @@ class Otopsi{
     global $post;
     //get the taxonomy for the post
 ?>
-    <div class="item <?php echo implode(" ",wp_get_post_terms( $post->ID, $taxonomy, array('fields' => 'slugs') ) ); ?>">
+    <div class="item <?php echo implode(" ",wp_get_post_terms( $post->ID, $taxonomies, array('fields' => 'slugs') ) ); ?>">
 <?php echo Otopsi::renderTemplate( stripslashes( $instance['contentTemplate'] ) ); ?>
     </div>
 <?php
@@ -618,7 +647,8 @@ return $bufferContent;
 
 
   /*
-   * Return a list of the terms under a taxonomy
+   * Return a list of the terms under a taxonomy in answer to a HTTP POST request
+   * $_POST['otopsi_term'] : array of taxonomy names whose terms we want to retrieve
    */  
   public static function get_taxonomy_terms() {
     if ($_POST['otopsi_term']) {

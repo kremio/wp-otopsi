@@ -67,7 +67,7 @@ if( isset($_GET['edit']) ){
                           <td><?php echo $sc['scName']; ?></td>
                           <td>
                             <input type="text" class="shortcode-in-list-table wp-ui-text-highlight code" value='[<?php echo OTOPSI_SC_NAME; ?> name="<?php echo $sc['scName'] ?>" id="<?php echo $scId; ?>"]' readonly="readonly" onfocus="this.select();" style="width:90%;"></td>
-                          <td><button onclick="otopsi_editShortCode('<?php echo $scId; ?>')">Edit</button> | <button onclick="otopsi_deleteShortCode('<?php echo $scId; ?>')">Delete</button></td>
+                          <td><button onclick="otopsi_editShortCode('<?php echo $scId; ?>')">Modify</button> | <button onclick="otopsi_deleteShortCode('<?php echo $scId; ?>')">Delete</button></td>
                     </tr>
 <?php
 endforeach;
@@ -80,10 +80,24 @@ endif;
     </tbody>
 </table>
 
+<?php
+$isNewForm = empty( $currentSc );
+
+if( $isNewForm ){
+  $currentSc = array();
+}
+
+$formTitle =  $isNewForm ? "Create a new shortcode":"Modify a shortcode";
+$buttonLabel = $isNewForm ? "Create":"Update";
+$currentSc['enable'] = 1;
+$currentSc['scName'] = $isNewForm ? 'NewOtopsiShortCode' : $currentSc['scName'] ;
+
+?>
+
 <table class="wp-list-table widefat fixed bookmarks">
     <thead>
         <tr>
-        <th><strong><?php echo empty( $currentSc ) ? "Create":"Edit"; ?> a shortcode</strong></th>
+        <th><strong><?php echo $formTitle; ?></strong></th>
         </tr>
     </thead>
     <tbody>
@@ -91,35 +105,20 @@ endif;
         <td>
       <form id="otopsi_shortcode_form" action="admin.php?page=otopsi_admin_menu" method="post">
 
-<?php
-if( empty( $currentSc ) ):
-  $currentSc = array('enable'=>1);
-?>
-        <p>
-      <label for="otopsi[scName]">Reference Name</label> 
-      <input class="widefat" id="otopsi[scName]" name="otopsi[scName]" type="text" value="NewOtopsiShortCode">
-      </p>
+      <table class="form-table">
+        <tr valign="top">
+          <th><label for="otopsi[scName]">Reference Name</label></th>
+          <td><input class="widefat" id="otopsi[scName]" name="otopsi[scName]" type="text" value="<?php echo $currentSc['scName']; ?>"></td>
+        </tr>
+      </table>
 <?php
   Otopsi::renderInstanceEditForm( $currentSc );
+  if( !$isNewForm ):
 ?>
-        <button>Create</button>
-<?php
-else:
-?>
-          <p>
-      <label for="otopsi[scName]">Reference Name</label> 
-      <input class="widefat" id="otopsi[scName]" name="otopsi[scName]" type="text" value="<?php echo $currentSc['scName']; ?>">
-      </p>
-<?php
- $currentSc['enable'] = 1;
-  Otopsi::renderInstanceEditForm( $currentSc );
-?>
-
         <input type="hidden" name="otopsi[sc_id]" value="<?php echo $currentSc['sc_id']; ?>"/>
-        <button>Update</button>
-<?php
-  endif;
-?>
+<?php endif; ?>
+        <button><?php echo $buttonLabel; ?></button>
+
       </form>
 			  </td>
     </tr>
