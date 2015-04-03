@@ -484,11 +484,10 @@ class Otopsi{
     if( $tag === "the_image" ){ //The featured image
       if (has_post_thumbnail()) {
         $thumbURL = wp_get_attachment_image_src(get_post_thumbnail_id($post->ID), '');
-        $img = $thumbURL[0];
-      } else {
-        $img = self::getFirstImage($post->ID);
-      }
-      return $img;
+        return $thumbURL[0];
+      }//hide the image
+      return '" style="display:none';
+      //$img = self::getFirstImage($post->ID);
     }
 
     //Wordpress template tags (http://codex.wordpress.org/Template_Tags)
