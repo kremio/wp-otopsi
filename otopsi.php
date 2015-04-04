@@ -254,7 +254,10 @@ class Otopsi{
 		if ( ! wp_verify_nonce( $nonce, 'otopsi_meta_box' ) )
 			return FALSE;
 
-     // Sanitize the user input
+    // Sanitize the user input
+    if( !isset($_POST['otopsi']['filtering']) ){
+      $_POST['otopsi']['filtersEnabled'] = 0;
+    }
     $mydata = $_POST['otopsi'];
     //$mydata['title'] = sanitize_text_field( $mydata['title'] );
 
@@ -609,7 +612,7 @@ class Otopsi{
 
     //Load CSS
     wp_enqueue_style("otopsi-base-style", plugins_url( "css/otopsi.css", __FILE__ ) );
-    wp_enqueue_style("otopsi-custom-style", plugins_url( "css/custom.css", __FILE__ ) );
+    wp_enqueue_style("otopsi-custom-style", plugins_url( "css/custom.css", __FILE__ ), false, filemtime(plugin_dir_path( __FILE__ )."css/custom.css") ); //Add cache busting
 
 
     //Load JS
