@@ -258,6 +258,9 @@ class Otopsi{
     if( !isset($_POST['otopsi']['filtering']) ){
       $_POST['otopsi']['filtersEnabled'] = 0;
     }
+    if( !isset($_POST['otopsi']['enable']) ){
+      $_POST['otopsi']['enable'] = 0;
+    }
     $mydata = $_POST['otopsi'];
     //$mydata['title'] = sanitize_text_field( $mydata['title'] );
 
