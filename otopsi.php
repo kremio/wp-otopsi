@@ -197,7 +197,7 @@ class Otopsi{
 
     $mydata = Otopsi::parseFormDataPost();
 
-    if( $mydata === FALSE || $mydata['enable'] != 1 ){ //the nonce is not valid or the plugin is not enabled
+    if( $mydata === FALSE ){ //the nonce is not valid or the plugin is not enabled
       return $post_id;
     }
    
@@ -255,14 +255,14 @@ class Otopsi{
 			return FALSE;
 
     // Sanitize the user input
-    if( !isset($_POST['otopsi']['filtering']) ){
-      $_POST['otopsi']['filtersEnabled'] = 0;
-    }
-    if( !isset($_POST['otopsi']['enable']) ){
-      $_POST['otopsi']['enable'] = 0;
-    }
     $mydata = $_POST['otopsi'];
-    //$mydata['title'] = sanitize_text_field( $mydata['title'] );
+    
+    if( !array_key_exists('filtersEnabled',$mydata) ){
+      $mydata['filtersEnabled'] = 0;
+    }
+    if( !array_key_exists('enable',$mydata) ){
+      $mydata['enable'] = 0;
+    }
 
     return $mydata;
 
@@ -630,7 +630,7 @@ class Otopsi{
 <?php
   //Show filtering options if enabled
   $filterSlugs = array();
-  if( isset($instance['filtersEnabled']) && $instance['filtersEnabled'] ) :
+  if( isset($instance['filtersEnabled']) && $instance['filtersEnabled'] != 0 ) :
 ?>
   <div class="otopsi-filters button-group">
     <button data-filter="*" class="is-checked">show all</button>
@@ -682,11 +682,7 @@ endif;
 </div>
 
 <script type="text/javascript" >
-
-jQuery( function(){
- Otopsi(); 
-});
-
+jQuery(window).load( Otopsi ); 
 </script>
 <?php
 
