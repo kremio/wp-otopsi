@@ -620,7 +620,7 @@ class Otopsi{
 
     //Load JS
     wp_enqueue_script("isotope-js", plugins_url( "js/isotope.pkgd.min.js", __FILE__ ) );
-    wp_enqueue_script("otopsi-js", plugins_url( "js/otopsi.js", __FILE__ ) );
+    wp_enqueue_script("otopsi-js", plugins_url( "js/otopsi.js", __FILE__), array( 'jquery','isotope-js' ), "0.0.1" );
 
     //start output buffering
     ob_start();
@@ -667,7 +667,7 @@ class Otopsi{
         continue;
       }
 
-      //WRNING: won't be filtered properly
+      //WARNING: won't be filtered properly
       $postFilterTerms[] = $postTerm->slug;
     }
 ?>
@@ -681,9 +681,6 @@ endif;
   </div>
 </div>
 
-<script type="text/javascript" >
-jQuery(window).load( Otopsi ); 
-</script>
 <?php
 
 //Get the content of the buffer

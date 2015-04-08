@@ -25,5 +25,6 @@
   };
 
   window.Otopsi = Otopsi;
+  jQuery(window).load( Otopsi );
 
 })();
