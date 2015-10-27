@@ -1,0 +1,8 @@
+{
+	"itemSelector": ".item",
+	"layoutMode": "masonry",
+	"masonry":{
+		"columnWidth": ".grid-sizer",
+		"gutter": ".gutter-sizer"
+	}
+}

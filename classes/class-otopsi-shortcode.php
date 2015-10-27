@@ -7,7 +7,9 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
  */
 class Otopsi_Shortcode{
 
-	//Create a new OtopsiShortCode instance with the shortcode attributes
+	/*
+ 	 * Create a new OtopsiShortCode instance from the given the shortcode
+ 	 */
 	public static function short_code_hook( $atts ) {
 		if ( array_key_exists( 'id' ,$atts ) && !empty( $atts['id'] ) ) { // Check if shortcode ID is passed
 			$scData = Otopsi_Shortcode::get_shortcodes_data();
@@ -33,7 +35,7 @@ class Otopsi_Shortcode{
 			update_option( OTOPSI_SC_KEY, $mydata['sc_id'] + 1 );
 		}
 
-		$scData[ $mydata['sc_id'] ]	= $mydata;
+		$scData[ $mydata['sc_id'] ] = $mydata;
 		Otopsi_Shortcode::save_shortcodes_data( $scData );
 	}
 

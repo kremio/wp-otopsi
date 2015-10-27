@@ -3,8 +3,14 @@
   var Otopsi = function(){
     jQuery(".otopsi-init").each( function(){
       jQuery(this).removeClass("otopsi-init");
-      var isotopeOptions = JSON.parse( "{"+jQuery(this).attr('data-otopsi')+"}" );
-      var $container = jQuery(this).find(".otopsi-container").isotope( isotopeOptions );
+      var isotopeOptionsString = jQuery(this).attr('data-otopsi');
+      /*
+       * To remove wrapping curly braces
+       * var reg = /^\{((?:.|\s)*)\}$/g;
+       * isotopeOptions = isotopeOptions.replace( reg, "$1");
+       */
+      var isotopeOptionsJSON = JSON.parse( isotopeOptionsString );
+      var $container = jQuery(this).find(".otopsi-container").isotope( isotopeOptionsJSON );
 
       jQuery(this).find('.otopsi-filters').on( 'click', 'button', function() {
         var filterValue = jQuery( this ).attr('data-filter');

@@ -22,12 +22,22 @@ class Otopsi{
 	/*
 	 * When plugin gets activated or updated.
 	 */
-	public static function on_activation() {
+	public static function activate() {
 		$primaryKey = get_option( OTOPSI_SC_KEY );
 		if ( empty( $primaryKey ) ) {
 			update_option( OTOPSI_SC_KEY, '1' );
 		}
 	}
+
+	/*
+ 	* Remove the options saved in the database when the plugin is uninstalled
+ 	*/
+	public static function uninstall(){
+		delete_option( OTOPSI_SC_DATA );
+		delete_option( OTOPSI_SC_KEY );
+	}
+
+
 
 	/* 
 	 * Setup the plugin settings interface on the page editor
@@ -36,7 +46,7 @@ class Otopsi{
 		add_meta_box(
 			'otopsi_meta_box'
 			,__( 'Otopsi filtering and layout', 'otopsi_textdomain' )
-			,array( $this, 'render_meta_box_content' )
+			,array( 'Otopsi_Renderer', 'render_meta_box_content' )
 			,'page'
 			,'normal'
 			,'high'
@@ -83,11 +93,23 @@ class Otopsi{
 	 * Returns a default instance configuration.
 	 */
 	public static function get_default_config() {
+		//read the default HTML template from the HTML file
+		$html_template = file_get_contents ( __OTOPSI_ROOT__ . '/defaults/html-template.html' );
+		if( ! $html_template ){
+			$html_template = sprintf('WARNING! Could not read %s/defaults/html-template.html.\n Make sure the file permission settings allow the file to be read by PHP.', __OTOPSI_ROOT__ );
+		}
+
+		//read the default Isototope configuration from the JSON file
+		$isotope_options = file_get_contents ( __OTOPSI_ROOT__ . '/defaults/isotope-options.json' );
+		if( ! $isotope_options  ){
+			$isotope_options = sprintf('WARNING! Could not read %s/defaults/isotope-options.json.\n Make sure the file permission settings allow the file to be read by PHP.', __OTOPSI_ROOT__ );
+		}
+		
 		return array(
 			'enable'       => 0, //(0 or 1) - 0: the plugin won't render on the page (only applies in the context of a page, not for shortcodes)
 			'wrapperClass' => 'otopsi', //(String) - HTML class that allows to style the plugin layout from CSS
 			/* 
-			 * Paraleters for the content search query.
+			 * Parameters for the content search query.
 			 * See https://codex.wordpress.org/Taxonomies
 			 */
 			'taxonomy' => '', //(Array) - Configure which taxonomies are included  
@@ -99,19 +121,10 @@ class Otopsi{
 			 */
 			'filtersEnabled' => 1, //(0 or 1) - 0:disable filtering based on terms, 1:enable filtering based on terms
 			//see http://isotope.metafizzy.co/options.html
-			'isotopeOptions' => '"itemSelector": ".item",
-			"layoutMode": "masonry",
-			"masonry":{
-				"columnWidth": ".grid-sizer",
-					"gutter": ".gutter-sizer"
-	}',
+			'isotopeOptions' => $isotope_options,
 	//HTML template for the items content
-	'contentTemplate' => '<a href="%the_permalink%" rel="bookmark" title="%the_title%" class="the_image"><img src="%the_image%" alt="%the_title%"/></a>
-	<h3 class="the_title"><a href="%the_permalink%" rel="bookmark">%the_title%</a></h3>
-	<p class="the_date">%the_date%</p>
-	%the_excerpt%
-	%the_category%'
-);
+			'contentTemplate' => $html_template,
+		);
 	}
 
 
@@ -127,59 +140,20 @@ class Otopsi{
 			return FALSE;
 
 		// Sanitize the user input
-		$mydata = $_POST['otopsi'];
+		$my_data = $_POST['otopsi'];
 
-		if( !array_key_exists( 'filtersEnabled', $mydata) ) {
-			$mydata['filtersEnabled'] = 0;
+		if( !array_key_exists( 'filtersEnabled', $my_data) ) {
+			$my_data['filtersEnabled'] = 0;
 		}
-		if( !array_key_exists( 'enable', $mydata) ) {
-			$mydata['enable'] = 0;
+		if( !array_key_exists( 'enable', $my_data) ) {
+			$my_data['enable'] = 0;
 		}
 
-		return $mydata;
+		$my_data['isotopeOptions'] = trim( $my_data['isotopeOptions'] );
+		$my_data['contentTemplate'] = trim( $my_data['contentTemplate'] );
 
+		return $my_data;
 	}
-
-	/*
-	 * Build the HTML of the Otopsi metabox
-	 */
-	public function render_meta_box_content($post) {
-
-		//Retrieve the Otopsi meta data for this page, if any
-		//Returns an array
-
-		$metaData = get_post_meta( $post->ID, OTOPSI_META_KEY, false );
-		if( !empty( $metaData ) ) {
-			$instance = $metaData[0];
-		}else{
-			$instance = array( 'enable' => 0 );
-		}
-?>
-		<script type="text/javascript" >
-
-		function ontoggleOtopsi(value) {
-			//console.log(value);
-			if( value ) {
-				jQuery('.otopsi_show_if_enabled').show();
-			}else{
-				jQuery('.otopsi_show_if_enabled').hide();
-			}
-		}
-
-		</script>
-
-<table class="form-table">
-<tr valign="top">
-<th><label for="otopsi[enable]"><?php _e('Enable Otopsi', 'otopsi_textdomain'); ?></label></th>
-<td><input type="checkbox" name="otopsi[enable]" id="otopsi[enable]" value="1" <?php echo $instance['enable']?' checked="checked"':''; ?>onchange="return ontoggleOtopsi(jQuery(this).is(':checked'));"></td>
-</tr>
-</table>
-
-<?php 
-		Otopsi_Renderer::render_instance_edit_form( $instance );
-	}
-
-
 
 
 	/**
@@ -249,36 +223,127 @@ class Otopsi{
 	 * $_POST['otopsi_term'] : array of taxonomy names whose terms we want to retrieve
 	 */  
 	public static function get_taxonomy_terms() {
-		if ( $_POST['otopsi_term'] ) {
-			$pterm = $_POST['otopsi_term'];
-			foreach ( $pterm as $tax ) {
-				$terms = get_terms( $tax, 'hide_empty=0&orderby=term_group' );
-				$optGroupTaxonomy = '';
+		if ( ! isset( $_POST['otopsi_term'] ) ||  empty( $_POST['otopsi_term'] ) ){
+			return;
+		}
 
-				if ( ! is_wp_error( $terms ) ) {
-					foreach ( $terms as $term ) {
-						$option = '';
-						if ( $optGroupTaxonomy != $term->taxonomy ) {
-							if ( $optGroupTaxonomy ) {
-								$option .= '</optgroup>';
-							}
-							$optGroupTaxonomy = $term->taxonomy;
-							$optGroupTaxonomyObj = get_taxonomy( $optGroupTaxonomy );
-							$option .= '<optgroup label="' . $optGroupTaxonomyObj->labels->name . '">'    ;
-						}
-						$option .= '<option value="' . $term->taxonomy . ';' . $term->term_id . '">';
-						$option .= $term->name;
-						$option .= ' (' . $term->count . ')';
-						$option .= '</option>';
-						echo $option;
+		foreach ( $_POST['otopsi_term'] as $tax ) {
+			$terms = get_terms( $tax, 'hide_empty=0&orderby=term_group' );
+			$opt_group_taxonomy = '';
+
+			if ( is_wp_error( $terms ) ) {
+				continue; //TODO: Better way to handle/report error
+			}
+			
+			foreach ( $terms as $term ) {
+				if ( $term->taxonomy != $opt_group_taxonomy  ) {
+					if ( $opt_group_taxonomy ) {
+						echo '</optgroup>'; //close the previous optgroup tag
 					}
+					$opt_group_taxonomy = $term->taxonomy;
+					$opt_group_taxonomy_obj = get_taxonomy( $opt_group_taxonomy );
+					echo sprintf( '<optgroup label="%s">', $opt_group_taxonomy_obj->labels->name );
 				}
+				echo sprintf( '<option value="%s;%s">%s (%d)</option>', $term->taxonomy, $term->term_id, $term->name, $term->count );
 			}
-			if ( $optGroupTaxonomy ) {
-				echo '</optgroup>';
-			}
-			exit;
+
+		}
+
+		if ($opt_group_taxonomy ) {
+			echo '</optgroup>'; //close the last optgroup tag, if any
 		}
 	}
-	
+
+	public static function check_credentials_for_download(){
+
+		//Check how to deal with the filesystem
+		$filesystem_method = get_filesystem_method( array(), __OTOPSI_ROOT__ . '/js/layout-modes');
+
+		if( 'direct' != $filesystem_method ){ //The user needs to provide credentials
+			echo 'credentials needed';
+			exit;
+		}
+
+		//We are good to go!
+		$creds = request_filesystem_credentials( site_url() . '/wp-admin/', '', false, false, array(), '', false, false, null);
+		
+		$result = Otopsi::install_layout_mode( $creds );
+		if( is_wp_error( $result ) ){
+			if( 'credentials' === $result->get_error_code() ){
+				echo 'credentials needed';
+				exit;
+			}
+
+			if( 'download_failed' === $result->get_error_code() ){
+				echo __('Download failed', 'otopsi-domain') . ':' . $result->get_error_message( 'download_failed' );
+				exit;
+			}
+
+			if( 'installation_failed' === $result->get_error_code() ){
+				echo __('Installation failed', 'otopsi-domain') . ':' . $result->get_error_message( 'installation_failed' );
+				exit;
+			}
+
+		}
+
+		echo 'ok';
+		exit;
+	}
+
+	public static function install_layout_mode( $creds ){
+
+		if ( ! WP_Filesystem($creds) ) {
+			request_filesystem_credentials($url, '', true, false, null);
+			return new WP_Error( 'credentials' );
+		}
+
+		$layout_modes =  Otopsi::get_isotope_layout_modes();
+		if ( ! isset( $_POST['otopsi_layout_mode'] ) || empty( trim($_POST['otopsi_layout_mode']) ) || !isset( $layout_modes[ trim( $_POST['otopsi_layout_mode'] ) ] ) || '' === $layout_modes[ trim( $_POST['otopsi_layout_mode'] ) ] ){
+			//This case should not occur when using the plugin admin, something is fishy so let's just fail silently
+			return true;
+		}
+
+		$layout_name = trim( $_POST['otopsi_layout_mode'] );
+
+		//Download the file to a temporary location on the local server
+		$download_file = download_url( $layout_modes[ $layout_name ] /*, 300 seconds timeout */ );
+		if( is_wp_error( $download_file ) ){
+			return new WP_Error( 'download_failed', $download_file->get_error_message() );
+		}
+
+		global $wp_filesystem;
+		/* replace the 'direct' absolute path with the Filesystem API path */
+		$plugin_path = str_replace(ABSPATH, $wp_filesystem->abspath(), __OTOPSI_ROOT__);
+		//Move the file to Otopsi's js/layout-modes/ folder
+		if( ! $wp_filesystem->move ( $download_file, $plugin_path . '/js/layout-modes/' . $layout_name . '.js', true ) ){ //Let's overwrite to be able to update
+			return new WP_Error( 'installation_failed',  __('The layout mode library could not be installed in the plugin folder.', 'otopsi-domain') );
+		}
+
+		return true;
+	}
+
+
+	/*
+ 	* Returns an associative array where the keys are the Isotope layout modes names and the values are the URLs to the associated JS library.
+ 	* Set the value to an empty string if the layout mode is included in the main Isotope JS file.
+ 	*/
+	public static function get_isotope_layout_modes(){
+		return array(
+			'masonry'           => '',
+			'fitRows'           => '',
+			'vertical'          => '',
+			'packery'           => 'https://cdnjs.cloudflare.com/ajax/libs/packery/1.4.3/packery.pkgd.min.js',
+			'cellsByRow'        => 'https://raw.github.com/metafizzy/isotope-cells-by-row/master/cells-by-row.js',
+			'masonryHorizontal' => 'https://raw.github.com/metafizzy/isotope-masonry-horizontal/master/masonry-horizontal.js',
+			'fitColumns'        => 'https://raw.github.com/metafizzy/isotope-fit-columns/master/fit-columns.js',
+			'cellsByColumn'     => 'https://raw.github.com/metafizzy/isotope-cells-by-column/master/cells-by-column.js',
+			'horizontal'        => 'https://raw.github.com/metafizzy/isotope-horizontal/master/horizontal.js',
+		);
+	}
+
+	public static function is_default_layout_mode( $layout_mode_name ){
+		$layout_modes = Otopsi::get_isotope_layout_modes();
+		return isset( $layout_modes[ $layout_mode_name  ] ) && '' === $layout_modes[ $layout_mode_name  ];
+	}
+
 };

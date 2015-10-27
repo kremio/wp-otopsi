@@ -19,12 +19,12 @@ Documentation
 Template Custom CSS
  */
 
-define('OTOPSI_VERSION',  '0.1');
-define('OTOPSI_META_KEY', 'otopsi_meta');
-define('OTOPSI_SC_NAME',  'otopsi');
-define('OTOPSI_SC_KEY',   'otopsi_sc_key');
-define('OTOPSI_SC_DATA',  'otopsi_sc_data');
-define('__OTOPSI_ROOT__',  dirname( dirname(__FILE__) ) );
+define( 'OTOPSI_VERSION',  '0.1' );
+define( 'OTOPSI_META_KEY', 'otopsi_meta' );
+define( 'OTOPSI_SC_NAME',  'otopsi' );
+define( 'OTOPSI_SC_KEY',   'otopsi_sc_key' );
+define( 'OTOPSI_SC_DATA',  'otopsi_sc_data' );
+define( '__OTOPSI_ROOT__',  dirname(__FILE__) );
 
 
 //Include the classes that make up the widget
@@ -45,19 +45,24 @@ function load_otopsi() {
  * Load the plugin class for the admin menu.
  */
 function load_otopsi_admin() {
-	new OtopsiAdmin();
+	new Otopsi_Admin();
 }
 
 //Setup initial state when the plugin is activated
-register_activation_hook( __FILE__, array( 'Otopsi', 'on_activation' ) );
+register_activation_hook( __FILE__, array( 'Otopsi', 'activate' ) );
+
+register_uninstall_hook( __FILE__, array( 'Otopsi', 'uninstall' )); 
 
 if ( is_admin() ) {
 	add_action( 'load-post.php', 'load_otopsi' );
 	add_action( 'load-post-new.php', 'load_otopsi' );
 	//Setup AJAX handler to retrieve the terms of a taxonomy on the client side
 	add_action( 'wp_ajax_otopsi_get_taxonomy_terms', array( 'Otopsi', 'get_taxonomy_terms' ) );
+	//Setup AJAX handler to download and install an Isotope layout library
+	add_action( 'wp_ajax_otopsi_check_credentials_for_download', array( 'Otopsi', 'check_credentials_for_download' ) );
 	//Add an admin menu
 	add_action( 'admin_menu', 'load_otopsi_admin' );
+	add_action( 'admin_enqueue_scripts', array( 'Otopsi_Admin', 'enqueue_script') );
 }
 //render the grid and filters if enabled for the page
 add_filter( 'the_content', array( 'Otopsi_Renderer', 'render_in_post' ), 100000 );
