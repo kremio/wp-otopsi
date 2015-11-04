@@ -8,54 +8,54 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 class Otopsi_Shortcode{
 
 	/*
- 	 * Create a new OtopsiShortCode instance from the given the shortcode
- 	 */
+	 * Render an Isotope from the given the shortcode
+	 */
 	public static function short_code_hook( $atts ) {
-		if ( array_key_exists( 'id' ,$atts ) && !empty( $atts['id'] ) ) { // Check if shortcode ID is passed
-			$scData = Otopsi_Shortcode::get_shortcodes_data();
-			if( array_key_exists( $atts['id'], $scData ) ) {
-				$currentSc = $scData[ $atts['id'] ];
-				$currentSc['enable'] = 1;
-				return Otopsi_Renderer::render_instance( $currentSc );
-			}else{
-				return 'Otopsi : Could not find a shortcode with the ID ' . $atts['id'];
+		if ( array_key_exists( 'id', $atts ) && ! empty( $atts['id'] ) ) { // Check if shortcode ID is passed
+			$sc_data = Otopsi_Shortcode::get_shortcodes_data();
+			if( array_key_exists( $atts['id'], $sc_data ) ) {
+				$current_sc = $sc_data[ $atts['id'] ];
+				$current_sc['enable'] = 1;
+				return Otopsi_Renderer::render_instance( $current_sc );
 			}
-		}else{
-			return 'Otopsi : Shortcode ID empty or undefined.';
+
+			return sprintf( __( 'Otopsi : Could not find a shortcode with the ID %s' , 'otopsi-domain' ), $atts['id'] );
 		}
+		
+		return __( 'Otopsi : Shortcode ID empty or undefined.', 'otopsi-domain' );
 	}
 
 	/*
 	 * Commit a shortcode to the database
 	 */
-	public static function save_shortcode( &$scData, $mydata ) {
-		if( !isset( $mydata['sc_id'] ) ) { //obtain a new shortcode id
-			$mydata['sc_id'] = get_option( OTOPSI_SC_KEY );
+	public static function save_shortcode( &$sc_data, $my_data ) {
+		if( !isset( $my_data['sc_id'] ) ) { //obtain a new shortcode id
+			$my_data['sc_id'] = get_option( OTOPSI_SC_KEY );
 			//update the shortcode id for next one
-			update_option( OTOPSI_SC_KEY, $mydata['sc_id'] + 1 );
+			update_option( OTOPSI_SC_KEY, $my_data['sc_id'] + 1 );
 		}
 
-		$scData[ $mydata['sc_id'] ] = $mydata;
-		Otopsi_Shortcode::save_shortcodes_data( $scData );
+		$sc_data[ $my_data['sc_id'] ] = $my_data;
+		Otopsi_Shortcode::save_shortcodes_data( $sc_data );
 	}
 
 	/*
 	 * Return the array containing data about all the registered shortcodes
 	 */
 	public static function get_shortcodes_data() {
-		$scData	= json_decode( get_option(OTOPSI_SC_DATA), true );
-		if ( empty($scData) ) {
+		$sc_data = json_decode( get_option( OTOPSI_SC_DATA ), true );
+		if ( empty( $sc_data ) ) {
 			return array();
 		}
 
-		return $scData;
+		return $sc_data;
 	}
 
 	/*
 	 * Save the shortcodes data
 	 */
-	public static function save_shortcodes_data( $scData ) {
-		update_option( OTOPSI_SC_DATA, json_encode( $scData, JSON_HEX_APOS | JSON_HEX_QUOT ) );
+	public static function save_shortcodes_data( $sc_data ) {
+		update_option( OTOPSI_SC_DATA, json_encode( $sc_data, JSON_HEX_APOS | JSON_HEX_QUOT ) );
 	}
 
 }

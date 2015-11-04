@@ -1,15 +1,14 @@
 /*
- Edit this stylesheet to create a custom look for your
- Otopsi plugins.
- 
+ Using Custom CSS with Otopsi
+ ----------------------------
  A. General class names
 
  Otopsi provides the following class names that you can use:
-  .otopsi : DIV wrapper around the entire plugin instance
-  .otopsi-filters : DIV wrapping the Filtering buttons
+  .otopsi:                      DIV wrapping the entire widget
+  .otopsi-filters :             DIV wrapping the Filtering buttons
   .otopsi-filters .is-checked : The current selected filter button
-  .otopsi-container : DIV wrapping all the items
-  .otopsi-container .item : DIV wrapping each items individually
+  .otopsi-container :           DIV wrapping all the items
+  .otopsi-container .item :     DIV wrapping each items individually
 
   If you are using the default Isotope options set by Otopsi,
   then you can use the following classes to set the dimensions of the items
@@ -18,17 +17,17 @@
     .otopsi-container .gutter-sizer : Set space between two items
   See the Isotope documentation for more information: http://isotope.metafizzy.co/options.html
   
-  Have a look otopsi.css files for an example on how you can use these classes to make the layout responsive
+  Have a look inside css/otopsi.css files for an example on how you can use these classes to make the layout responsive
 
 
   For even more control, and for the possibility to have several instances of the
   plugin on the same page or post with different styles, set a custom wrapper CSS class when you
   create an instance of Otopsi using the page editor or the short code editor.
-  This custom class will be applied to the main DIV wrapper with the 'otopsi' class name.
+  This custom class will be applied to the main DIV wrapper (the with the 'otopsi' class name).
 
-  For instance, is you have set the custom class name for one of your shortcode to 'my-custom-otopsi',
+  For instance, if you have set the custom wrapper class name for one of your shortcode to 'my-custom-otopsi',
   you could add a border around each instance of this particular shortcode by adding the following rule to this file:
-  .my-custom-otopsi{
+  .my-custom-otopsi.otopsi{
     border: 1px solid #BADA55;
   }
 
@@ -37,7 +36,17 @@
 
   To style the content of each item, use the item content template setting to set class names for the
   element you want to target. Have a look below for Otopsi's default style applied to the default content template.
+  IMPORTANT: Remember that the custom wrapper class name is automatically added to your CSS selectors,
+  therefore DO NOT use it in your selectors! If the wrapper class name is set to 'my-custom-otopsi', then the following
+  selector
+    .item { ... } 
+  will be automatically turned into 
+    .my-custom-otopsi .item { ... }
  
+  C. Default CSS rules
+  Edit this stylesheet to create default CSS rules for your Isotope widgets.
+  Every time you create a new shortcode or enable Otopsi on the Page editor, the content of this file
+  will be used to populate the Custom CSS rules field.
  */
 
 /* DIV wrapping each items separatly */

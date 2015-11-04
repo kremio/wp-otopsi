@@ -27,6 +27,11 @@ class Otopsi{
 		if ( empty( $primaryKey ) ) {
 			update_option( OTOPSI_SC_KEY, '1' );
 		}
+
+		//Check if css/custom.css exists
+		//if it exists, do nothing
+		//else create it with default content
+  		Otopsi_Renderer::render_default_custom_css();
 	}
 
 	/*
@@ -105,6 +110,12 @@ class Otopsi{
 			$isotope_options = sprintf('WARNING! Could not read %s/defaults/isotope-options.json.\n Make sure the file permission settings allow the file to be read by PHP.', __OTOPSI_ROOT__ );
 		}
 		
+		//read the default CSS template from the HTML file
+		$css_template = file_get_contents ( __OTOPSI_ROOT__ . '/defaults/custom.css' );
+		if( ! $html_template ){
+			$css_template = sprintf('WARNING! Could not read %s/defaults/custom.css.\n Make sure the file permission settings allow the file to be read by PHP.', __OTOPSI_ROOT__ );
+		}
+
 		return array(
 			'enable'       => 0, //(0 or 1) - 0: the plugin won't render on the page (only applies in the context of a page, not for shortcodes)
 			'wrapperClass' => 'otopsi', //(String) - HTML class that allows to style the plugin layout from CSS
@@ -122,8 +133,10 @@ class Otopsi{
 			'filtersEnabled' => 1, //(0 or 1) - 0:disable filtering based on terms, 1:enable filtering based on terms
 			//see http://isotope.metafizzy.co/options.html
 			'isotopeOptions' => $isotope_options,
-	//HTML template for the items content
+			//HTML template for the items content
 			'contentTemplate' => $html_template,
+			//Custom CSS rules
+			'cssTemplate' => $css_template,
 		);
 	}
 
@@ -151,6 +164,8 @@ class Otopsi{
 
 		$my_data['isotopeOptions'] = trim( $my_data['isotopeOptions'] );
 		$my_data['contentTemplate'] = trim( $my_data['contentTemplate'] );
+    $my_data['cssTemplate'] = trim( $my_data['cssTemplate'] );
+
 
 		return $my_data;
 	}
@@ -182,24 +197,28 @@ class Otopsi{
 				list( $taxonomyName, $termId ) = explode( ';', $term );
 				if( !isset( $termId ) ) {
 					continue;
-				}
+				}	
 
 				$term_array = get_term_by( 'id', $termId, $taxonomyName, 'ARRAY_A' );
 				$filters[] = $term_array;
+
+				//var_dump( $taxonomies_terms[$taxonomyName]['terms'] );
 
 				if ( !isset( $taxonomies_terms[$taxonomyName] ) ) {
 					$taxonomies_terms[$taxonomyName] = array(
 						'taxonomy'         => $taxonomyName,
 						'field'            => 'slug',
-						'terms'            => $term_array['slug'],
+						'terms'            => array( $term_array['slug'] ),
 						'include_children' => true,
 						'operator'         => 'IN'
 					);
 				} else {
-					$taxonomies_terms[$taxonomyName]['terms'] .= ',' . $term_array['slug'];
+					$taxonomies_terms[$taxonomyName]['terms'][] = $term_array['slug'];
 				}
 			}
 		}
+
+		
 
 
 		if ( isset( $taxonomies_terms['category'] ) ) { //For the category taxonomy use the special field 'category_name'
@@ -211,6 +230,7 @@ class Otopsi{
 		$args['tax_query'] = array( 'relation' => 'OR' );
 		$args['tax_query'] = array_merge( $args['tax_query'], array_values( $taxonomies_terms ) );
 
+				
 
 		//Run the query
 		return new WP_Query( $args );
