@@ -27,11 +27,6 @@ class Otopsi{
 		if ( empty( $primaryKey ) ) {
 			update_option( OTOPSI_SC_KEY, '1' );
 		}
-
-		//Check if css/custom.css exists
-		//if it exists, do nothing
-		//else create it with default content
-  		Otopsi_Renderer::render_default_custom_css();
 	}
 
 	/*
@@ -127,6 +122,7 @@ class Otopsi{
 			'term'     => '', //(Array) - Configure which terms of the taxonomies are included
 			'posttype' => '', //(Array) - Limit search to the specified post types
 			'limit'    => 10, //Integer - Limit the number of posts returned
+			'sort'     => 'date|DESC',
 			/*
 			 * Isotope settings
 			 */
@@ -140,6 +136,23 @@ class Otopsi{
 		);
 	}
 
+	/*
+	 * Return an associative array representation of the sort settings of an instance.
+	 * The array is laid out like so : sortcode => ASC|DESC
+	 * Return FALSE if the sort settings are not set or if the settings are not formatted properly.
+	 */
+	public static function expand_sort_setting( $instance ){
+		if( !isset( $instance['sort'] ) || trim( $instance['sort']  ) === '' ){
+			return FALSE;
+		}
+		
+		$sortcodes_directions = explode( '|', $instance['sort'] );
+		$sortcodes = explode(',', $sortcodes_directions[0] );
+		$directions = explode(',', $sortcodes_directions[1] );
+
+		return array_combine( $sortcodes, $directions );
+
+	}
 
 	public static function parse_form_data_post() {
 
@@ -162,6 +175,7 @@ class Otopsi{
 			$my_data['enable'] = 0;
 		}
 
+		$my_data['sort'] = trim( $my_data['sort'] );
 		$my_data['isotopeOptions'] = trim( $my_data['isotopeOptions'] );
 		$my_data['contentTemplate'] = trim( $my_data['contentTemplate'] );
     $my_data['cssTemplate'] = trim( $my_data['cssTemplate'] );
@@ -180,12 +194,13 @@ class Otopsi{
 	 */
 	public static function search_blog( $instance, &$filters ) {
 
+		$sort_options = Otopsi::expand_sort_setting( $instance );
+
 		//constructor options for WP_Query
 		$args = array(
 			'post_type'      => $instance['posttype'],
 			'posts_per_page' => $instance['limit'],
-			'orderby'        => 'date',
-			'order'          => 'DESC'
+			'orderby'        => $sort_options,
 		); 
 
 		//Create the query search conditions based on the taxonomies and terms provided
@@ -229,8 +244,6 @@ class Otopsi{
 		//The taxonomy query
 		$args['tax_query'] = array( 'relation' => 'OR' );
 		$args['tax_query'] = array_merge( $args['tax_query'], array_values( $taxonomies_terms ) );
-
-				
 
 		//Run the query
 		return new WP_Query( $args );

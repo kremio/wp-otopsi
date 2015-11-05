@@ -2,6 +2,52 @@
 
 	var Otopsi = {
 
+		initAdmin: function(){
+			Otopsi.initAccordions();
+      Otopsi.initSortOptions();
+			Otopsi.checkForInstalledLayouts();
+		},
+
+initAccordions: function(){
+	jQuery( '.otopsi_show_if_enabled' ).accordion({
+		collapsible: true,
+	heightStyle: 'content',
+	header:'.hndle',
+	//Reflect the open/closed state in the header arrow
+	create: function( event, ui ) {
+		ui.header.parent( '.postbox' ).removeClass( 'closed' );
+	},
+	activate: function( event, ui ) { //change the header arrow direction
+		ui.newHeader.parent( '.postbox' ).removeClass( 'closed' );
+		ui.oldHeader.parent( '.postbox' ).addClass( 'closed' );
+	}
+	});
+},
+
+	initSortOptions: function(){
+		jQuery( '.sort-option span' ).click(function(){
+			$this = jQuery(this);
+      $this.parent( '.sort-option' ).removeClass( 'off ASC DESC' ).addClass( $this.attr( 'data-state' ) ).attr('data-direction', $this.attr( 'data-state' ));
+      Otopsi.updateSortValue();
+		});
+  Otopsi.updateSortValue();
+	},
+
+	//Update the value of the otopsi[sort] input field
+	updateSortValue: function(){
+		var sortCodes = '';
+		var sortDirections = '';
+		jQuery( '.sort-option' ).not('.off').each(function(){
+			$this = jQuery(this);
+			sortCodes += sortCodes !== '' ? ',' : '';
+			sortCodes += $this.attr( 'data-code' );
+
+			sortDirections += sortDirections !== '' ? ',' : '';
+			sortDirections += $this.attr( 'data-direction' );
+		});
+		jQuery( 'input[name="otopsi[sort]"]' ).val( sortCodes + '|' + sortDirections );
+	},
+
 		//Called to reveal the Otopsi meta box on the page edit page
 	ontoggleOtopsi: function ( value ) {
 		if( value ) {
@@ -101,6 +147,6 @@
 };
 
 window.Otopsi = Otopsi;
-jQuery( document ).ready( Otopsi.checkForInstalledLayouts );
+jQuery( document ).ready( Otopsi.initAdmin );
 
 })();

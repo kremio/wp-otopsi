@@ -37,6 +37,7 @@ class Otopsi_Shortcode{
 
 		$sc_data[ $my_data['sc_id'] ] = $my_data;
 		Otopsi_Shortcode::save_shortcodes_data( $sc_data );
+		return $my_data['sc_id'];
 	}
 
 	/*

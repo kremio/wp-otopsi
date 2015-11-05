@@ -19,7 +19,7 @@ class Otopsi_Admin{
 		if( 'post.php' !== $hook && FALSE === strpos($hook, 'otopsi') ){
 			return;
 		}
-		wp_register_script( 'otopsi-admin-js', plugins_url( 'js/otopsi-admin.js',  dirname(__FILE__) ), array( 'jquery'), OTOPSI_VERSION, true );
+		wp_register_script( 'otopsi-admin-js', plugins_url( 'js/otopsi-admin.js',  dirname(__FILE__) ), array( 'jquery', 'jquery-ui-accordion'), OTOPSI_VERSION, true );
 
 		//Let our frontend JS know about the base URL
 		$urls =array( 

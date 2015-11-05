@@ -10,6 +10,15 @@ $screen_mode = "list";
 
 if( isset( $_GET['edit'] ) ){
 	$currentSc = $scData[ $_GET['edit'] ];
+	$screen_mode = 'edit';
+}else if( isset( $_GET['duplicate'] ) ){
+	//create a copy of the shortode
+	$duplicateSc = $scData[ $_GET['duplicate'] ];
+	$duplicateSc['scName'] .= '_copy';
+	unset( $duplicateSc['sc_id'] ); //this will trigger the creation of a new shortcode on save
+	$duplicateSc['sc_id'] = Otopsi_Shortcode::save_shortcode( $scData, $duplicateSc );
+	//set the new copy as the current shortcode and display edit screen
+	$currentSc = $duplicateSc;
 	$screen_mode = "edit";
 }else if( isset( $_GET['delete'] ) ){
 	unset( $scData[ $_GET['delete'] ] );
@@ -49,7 +58,7 @@ if( "edit" === $screen_mode ){
 	<form id="otopsi_shortcode_form" action="<?php menu_page_url('otopsi_admin_menu'); ?>" method="post">
 
 		<table class="form-table">
-			<tr valign="top">
+			<tr >
 				<th><label for="otopsi[scName]"><?php _e( 'Reference Name', 'otopsi-domain' ); ?></label></th>
 				<td>
 					<input class="regular-text" id="otopsi[scName]" name="otopsi[scName]" type="text" value="<?php echo $currentSc['scName']; ?>">
@@ -92,6 +101,9 @@ if( ! empty( $scData ) ):
 								<div class="row-actions">
 									<span class="edit">
 										<a href="<?php menu_page_url('otopsi_admin_menu'); ?>&edit=<?php echo $scId; ?>" title="<?php _e( 'Edit this shortcode', 'otopsi-domain' ); ?>"><?php _e( 'Edit', 'otopsi-domain' ); ?></a> |
+									</span>
+									<span class="duplicate">
+										<a href="<?php menu_page_url('otopsi_admin_menu'); ?>&duplicate=<?php echo $scId; ?>" title="<?php _e( 'Duplicate this shortcode', 'otopsi-domain' ); ?>"><?php _e( 'Duplicate', 'otopsi-domain' ); ?></a> |
 									</span>
 									<span class="trash">
 										<a onclick="return confirm( '<?php _e( 'Are you sure?', 'otopsi-domain' ); ?>' );" href="<?php menu_page_url('otopsi_admin_menu'); ?>&delete=<?php echo $scId; ?>" title="<?php _e( 'Delete this shortcode', 'otopsi-domain' ); ?>"><?php _e( 'Delete', 'otopsi-domain' ); ?></a>
