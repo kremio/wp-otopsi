@@ -126,7 +126,7 @@ class Otopsi{
 			/*
 			 * Isotope settings
 			 */
-			'filtersEnabled' => 1, //(0 or 1) - 0:disable filtering based on terms, 1:enable filtering based on terms
+			'filters' => '', //(0 or 1) - 0:disable filtering based on terms, 1:enable filtering based on terms
 			//see http://isotope.metafizzy.co/options.html
 			'isotopeOptions' => $isotope_options,
 			//HTML template for the items content
@@ -151,7 +151,31 @@ class Otopsi{
 		$directions = explode(',', $sortcodes_directions[1] );
 
 		return array_combine( $sortcodes, $directions );
+	}
+	
 
+	public static function expand_filters_setting( $instance ){
+  		if( !isset( $instance['filters'] ) || trim( $instance['filters']  ) === '' ){
+			return FALSE;
+		}
+
+		$expanded_filter_groups = array();
+		$filter_groups = explode( '|', $instance['filters'] );
+		foreach( $filter_groups as $filter_group ){
+			list($group_name, $display_group_name) = explode( ';', $filter_group );
+			$filters = array_slice( explode( ';', $filter_group ) , 2 );
+			
+   			$expanded_filter_groups[ $group_name ] = array(
+				'display_group_name' => $display_group_name,
+				'filters' => array()
+			);
+
+			for($i = 0; $i < count( $filters ); $i+=2){
+    			$expanded_filter_groups[ $group_name ][ 'filters' ][ $filters[$i] ] = $filters[$i+1];
+			}
+		}
+
+		return $expanded_filter_groups;
 	}
 
 	public static function parse_form_data_post() {
@@ -167,18 +191,20 @@ class Otopsi{
 
 		// Sanitize the user input
 		$my_data = $_POST['otopsi'];
-
+		/*
 		if( !array_key_exists( 'filtersEnabled', $my_data) ) {
 			$my_data['filtersEnabled'] = 0;
 		}
+		 */
 		if( !array_key_exists( 'enable', $my_data) ) {
 			$my_data['enable'] = 0;
 		}
 
 		$my_data['sort'] = trim( $my_data['sort'] );
+		$my_data['filters'] = trim( $my_data['filters'] );
 		$my_data['isotopeOptions'] = trim( $my_data['isotopeOptions'] );
 		$my_data['contentTemplate'] = trim( $my_data['contentTemplate'] );
-    $my_data['cssTemplate'] = trim( $my_data['cssTemplate'] );
+		$my_data['cssTemplate'] = trim( $my_data['cssTemplate'] );
 
 
 		return $my_data;
@@ -212,12 +238,10 @@ class Otopsi{
 				list( $taxonomyName, $termId ) = explode( ';', $term );
 				if( !isset( $termId ) ) {
 					continue;
-				}	
+				}
 
 				$term_array = get_term_by( 'id', $termId, $taxonomyName, 'ARRAY_A' );
 				$filters[] = $term_array;
-
-				//var_dump( $taxonomies_terms[$taxonomyName]['terms'] );
 
 				if ( !isset( $taxonomies_terms[$taxonomyName] ) ) {
 					$taxonomies_terms[$taxonomyName] = array(
@@ -233,8 +257,6 @@ class Otopsi{
 			}
 		}
 
-		
-
 
 		if ( isset( $taxonomies_terms['category'] ) ) { //For the category taxonomy use the special field 'category_name'
 			$args['category_name'] = $taxonomies_terms['category']['terms'];
@@ -248,11 +270,104 @@ class Otopsi{
 		//Run the query
 		return new WP_Query( $args );
 	}
-
-
+	
 
 	/*
-	 * Return a list of the terms under a taxonomy in answer to a HTTP POST request
+	 * Construct optgroup for filter creation by extracting all possible filters from the result of running the blog search
+	 * specified in the HTTP POST request
+	 * $_POST['search_terms'] : taxonomy and terms search criteria
+	 * $_POST['search_posttype'] : post_type search criteria
+	 * $_POST['search_sort'] : result sorting
+	 * $_POST['search_limit'] : search result limit setting
+	 */
+	public static function get_possible_filters() {
+  		if (
+			! isset( $_POST['search'] ) || ! is_array( $_POST['search'] ) ||
+			! isset( $_POST['search']['term'] )    || empty( $_POST['search']['term'] )    ||
+			! isset( $_POST['search']['posttype'] ) || empty( $_POST['search']['posttype'] ) ||
+			! isset( $_POST['search']['sort'] )     || empty( $_POST['search']['sort'] )     ||
+			! isset( $_POST['search']['limit'] )    || empty( $_POST['search']['limit'] )
+		){
+			return;
+		}
+		
+		$search_query = $_POST['search'];
+		$not_used = array();
+		$search_results = Otopsi::search_blog($search_query, $not_used);
+		
+		if( ! $search_results->have_posts() ){
+			return;
+		}
+
+		$filters = array(
+			'tags' => array(),
+			'categories' => array(),
+			'authors' => array(),
+			'posttypes' => array(),
+		);
+		
+		while ( $search_results->have_posts() ){
+			$search_results->the_post();
+			
+			global $post;
+			//Retrieve the filters value for the post and aggregate into the $filters array
+			$post_tags = wp_get_post_terms( $post->ID, 'post_tag', array( 'fields' => 'names' ) );
+      $post_categories = wp_get_post_terms( $post->ID, 'category', array( 'fields' => 'names' ) );
+
+			$filters['tags'] = array_merge( $filters['tags'], $post_tags );
+			$filters['categories'] = array_merge( $filters['categories'], $post_categories );
+			$filters['authors'][] = get_the_author();
+	   		$post_types = get_post_type();
+			if( false != $post_types ){
+    			if( is_array( $post_types ) ){
+					$filters['posttypes'] = array_merge( $filters['posttypes'], $post_types );
+				}else{
+     				$filters['posttypes'][] = $post_types ;
+				}
+			}
+
+		}
+		//remove doubles
+		$filters['tags'] = array_unique( $filters['tags'] );
+		$filters['categories'] = array_unique( $filters['categories'] );
+		$filters['authors'] = array_unique( $filters['authors'] );
+		$filters['posttypes'] = array_unique( $filters['posttypes'] );
+
+?>
+	<option value="*"><?php _e( 'Show all', 'otopsi-domain' ); ?></option>
+	<optgroup label="<?php _e( 'Categories', 'otopsi-domain' ); ?>">
+<?php
+		foreach ( $filters['categories'] as $category ) {
+   	echo sprintf( '<option value="category_%s">%1$s</option>', $category );
+		}
+?>
+</optgroup>
+<optgroup label="<?php _e( 'Tags', 'otopsi-domain' ); ?>">
+<?php
+		foreach ( $filters['tags'] as $tag ) {
+   	echo sprintf( '<option value="tag_%s">%1$s</option>', $tag );
+		}
+?>
+</optgroup>
+<optgroup label="<?php _e( 'Authors', 'otopsi-domain' ); ?>">
+<?php
+		foreach ( $filters['authors'] as $author ) {
+   	echo sprintf( '<option value="author_%s">%1$s</option>', $author );
+		}
+?>
+</optgroup>
+<optgroup label="<?php _e( 'Types', 'otopsi-domain' ); ?>">
+<?php
+		foreach ( $filters['posttypes'] as $posttype ) {
+   	echo sprintf( '<option value="postype_%s">%1$s</option>', $posttype );
+		}
+?>
+</optgroup>
+<?php
+		exit();
+	}
+	/*
+	 * Construct optgroup from the list of the terms under a taxonomy in answer to a HTTP POST request
 	 * $_POST['otopsi_term'] : array of taxonomy names whose terms we want to retrieve
 	 */  
 	public static function get_taxonomy_terms() {

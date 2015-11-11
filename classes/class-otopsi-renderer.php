@@ -17,7 +17,7 @@ class Otopsi_Renderer{
 			'title'         => __('by title', 'otopsi-domain'),
 			'name'          => __('by post name', 'otopsi-domain'),
 			'type'          => __('by post type', 'otopsi-domain'),
-			'date'          => __(' by date', 'otopsi-domain'),
+			'date'          => __('by date', 'otopsi-domain'),
 			'modified'      => __('by last modified date', 'otopsi-domain'),
 			'rand'          => __('randomly', 'otopsi-domain'),
 			'comment_count' => __('by number of comments', 'otopsi-domain'),
@@ -27,9 +27,9 @@ class Otopsi_Renderer{
 			$direction = $state && isset( $state[ $option_code ] ) && $state[ $option_code ] ? $state[ $option_code ] : 'off';
 ?>
 <div class="sort-option <?php echo $direction; ?>" data-code="<?php echo $option_code; ?>" data-direction="<?php echo $direction; ?>">
-	<span class="dashicons dashicons-no off" data-state="off"></span>
-	<span class="dashicons dashicons-arrow-up ascending" data-state="ASC"></span>
-	<span class="dashicons dashicons-arrow-down descending" data-state="DESC"></span>
+	<span class="dashicons dashicons-minus off" data-state="off"></span>
+	<span class="dashicons dashicons-arrow-up-alt2 ascending" data-state="ASC"></span>
+	<span class="dashicons dashicons-arrow-down-alt2 descending" data-state="DESC"></span>
 	<?php echo $option_label; ?>
 </div>
 <?php
@@ -83,7 +83,7 @@ class Otopsi_Renderer{
 <div class="otopsi_show_if_enabled js metabox-holder" style="display: <?php echo $instance['enable'] ? 'block' : 'none'; ?>">
 	<div class="meta-box-sortables">
 		
-		<div id="content-selection-options" class="postbox closed">
+		<div id="content-selection-options" class="settings postbox closed">
 			<div class="handlediv" title="Click to toggle"><br /></div>
 			<h3 class='hndle'><span><?php _e('Content Selection', 'otopsi-domain'); ?></span></h3>
 			<table class="form-table">
@@ -166,7 +166,7 @@ class Otopsi_Renderer{
 			<tr >
 				<th><label for="otopsi[posttype]"><?php _e( 'Post types', 'otopsi-domain' ); ?></label></th>
 				<td>
-					<select multiple="multiple"  id="otopsi[posttype]" name="otopsi[posttype][]" style="width:90%;">
+					<select multiple="multiple"  id="otopsi_posttype" name="otopsi[posttype][]" style="width:90%;">
 
 <?php
 		$post_types = get_post_types( array( 'public' => true, 'show_ui' => true ) );
@@ -193,14 +193,17 @@ class Otopsi_Renderer{
 				<th>
 					<label for="otopsi[limit]"><?php _e( 'Limit number of displayed items to', 'otopsi-domain' ); ?></label>
 				</th>
-				<td><input type="number" name="otopsi[limit]" id="otopsi[limit]" value="<?php echo $instance['limit']; ?>"/>
+				<td><input type="number" class="otopsi-no-submit" name="otopsi[limit]" id="otopsi[limit]" value="<?php echo $instance['limit']; ?>"/>
 					<p class="description"><?php _e( '-1 : no limit', 'otopsi-domain' ); ?></p>
 				</td>
 			</tr>
 
 			<tr >
 				<th>
-					<label for="otopsi[sort]"><?php _e( 'Sort result', 'otopsi-domain' ); ?></label>
+					<label for="otopsi[sort]"><?php _e( 'Default items order', 'otopsi-domain' ); ?></label>
+					<p class="description">
+<?php _e('This determines the order the items will be fetched from the database and how they will be initially displayed by the widget.', 'otopsi-domain' ); ?>
+					</p>
 				</th>
 				<td><input type="hidden" name="otopsi[sort]" id="otopsi[sort]" value="<?php echo $instance['sort']; ?>"/>
 					<?php Otopsi_Renderer::render_sort_options( Otopsi::expand_sort_setting( $instance ) ); ?>
@@ -212,23 +215,150 @@ class Otopsi_Renderer{
 		</table>
 	</div> <!-- END content-selection-options -->
 
-	<div id="isotope-options" class="postbox closed">
+	<div id="isotope-options" class="settings postbox closed">
 		<div class="handlediv" title="Click to toggle"><br /></div>
-		<h3 class='hndle'><span><?php _e('Isotope Options', 'otopsi-domain'); ?></span></h3>
+		<h3 class="hndle"><span><?php _e('Isotope Options', 'otopsi-domain'); ?></span></h3>
 		<table class="form-table">
 			<tbody>
 			<tr >
-				<th><label for="otopsi[filtersEnabled]"><?php _e( 'Enable Isotope filtering', 'otopsi-domain' ); ?></label></th>
-				<td><input type="checkbox" class="filter-chkbox" name="otopsi[filtersEnabled]" id="otopsi[filtersEnabled]" value="1" <?php echo $instance['filtersEnabled'] ? ' checked="checked"' : ''; ?>><span class="dashicons dashicons-filter"></span>
-					<p class="description"><?php _e( 'When checked, the widget will provide buttons to hide/show content based on the terms.', 'otopsi-domain' ); ?></p>
+				<th>
+					<label for="otopsi[filtersEnabled]"><?php _e( 'Filtering', 'otopsi-domain' ); ?></label>
+					<p class="description"><?php _e( 'Filter groups allow the page visitors to interactively filter the content of the widget.', 'otopsi-domain' ); ?></p>
+					<p class="description filter-warning"><?php _e( 'One or more of the filters has no effect!', 'otopsi-domain' ); ?></p>
+				</th>
+				<td>
+					<select id="filters-select-source" class="filters-select">
+					</select>
+					
+					<div class="filter-group-template">
+						<div class="handlediv" title="Click to toggle"><br /></div>
+						<h3 class="hndle"></h3>
+						
+						<div class="filter-group-box inside">
+						<ul class="category-tabs">
+								<li class="tabs"><a href="#group-tab-"><?php _e( 'Group options', 'otopsi-domain' ); ?></a></li>
+								<li class=""><a href="#filters-tab-"><?php _e( 'Filters', 'otopsi-domain' ); ?></a></li>
+							</ul>
+
+							<div id="group-tab-" class="wp-tab-panel">
+								<label for="group-tab-name"><?php _e( 'Group name', 'otopsi-domain' ); ?></label>
+								<input type="text" class="regular-text filter-group-name-input" name="group-tab-name"><br/>
+								<label for="group-tab-display">
+								<input name="group-tab-display" type="checkbox" value="hide"><?php _e( 'Display group name', 'otopsi-domain' ); ?></label>
+							</div>
+
+							<div id="filters-tab-" class="wp-tab-panel">
+								<ul class="filters"></ul>
+							</div>
+
+							<div class="filter-adder wp-hidden-children">
+								<h4><a href="#filter-add">+ <?php _e('Add New Filter', 'otopsi-domain'); ?></a></h4>
+								<p class="filter-adder-form wp-hidden-child">
+									<label for="filters-tab-label"><?php _e( 'Label', 'otopsi-domain' ); ?></label>
+									<input type="text" class="regular-text filter-label-input" name="filters-tab-label"><br/>
+
+									<label for="filters-tab-type"><?php _e( 'Filter on', 'otopsi-domain' ); ?></label>
+									<select  multiple="multiple" name="filters-tab-type" class="filters-select">
+									</select>
+									<br/>
+
+									<button type="button" class="button add-filter-button"><?php _e( 'Add filter', 'otopsi-domain' ); ?></button>
+									<button type="button" class="button edit-button update-filter-button"><?php _e( 'Update filter', 'otopsi-domain' ); ?></button>
+									<button type="button" class="button edit-button cancel-filter-button"><?php _e( 'Cancel', 'otopsi-domain' ); ?></button>
+								</p>
+							</div>
+
+							<a href="#" class="delete-filter-group"><span class="dashicons dashicons-dismiss"></span><?php _e( 'Remove this filter group', 'otopsi-domain'); ?></a>
+
+						</div>
+					</div> <!-- END OF TEMPLATE -->
+
+					<div class="filters-js-messages">
+						<span class="confirm-deletion"><?php _e('Are you sure?', 'otopsi-domain'); ?></span>
+					</div>
+
+					<input type="text" class="regular-text" name="new-filter-group"/><button id="add-filter-group" type="button" class="button"><?php _e('Add a filter group', 'otopsi-domain'); ?></button>
+					<div id="filter-groups-accordion" class="postbox">
+<?php
+		$filter_groups = Otopsi::expand_filters_setting( $instance );
+		foreach( $filter_groups as $group_name => $group_data ){
+?>
+						<div class="filters-group-wrap closed">
+							<div class="handlediv" title="Click to toggle"><br /></div>
+							<h3 class="hndle"><?php echo $group_name; ?></h3>
+
+							<div class="filter-group-box inside">
+								<ul class="category-tabs">
+									<li class="tabs"><a href="#group-tab-"><?php _e( 'Group options', 'otopsi-domain' ); ?></a></li>
+									<li class=""><a href="#filters-tab-"><?php _e( 'Filters', 'otopsi-domain' ); ?></a></li>
+								</ul>
+
+								<div id="group-tab-" class="wp-tab-panel">
+									<label for="group-tab-name"><?php _e( 'Group name', 'otopsi-domain' ); ?></label>
+									<input type="text" class="regular-text filter-group-name-input" name="group-tab-name" value="<?php echo $group_name; ?>"><br/>
+									<label for="group-tab-display">
+									<input name="group-tab-display" type="checkbox" value="hide" <?php echo '1' == $group_data[ 'display_group_name' ] ? 'checked="true"' : ''; ?>><?php _e( 'Display group name', 'otopsi-domain' ); ?></label>
+								</div>
+
+								<div id="filters-tab-" class="wp-tab-panel">
+								<ul class="filters">
+<?php
+			foreach( $group_data[ 'filters' ] as $filter_label => $filter_types ){
+?>
+	<li data-filters="<?php echo $filter_types; ?>" data-name="<?php echo $filter_label; ?>"><b class="name"><?php echo $filter_label; ?></b><span class="dashicons dashicons-edit edit"></span><span class="dashicons dashicons-trash delete"></span></li>
+<?php
+			}
+?>
+								</ul>
+								</div>
+
+								<div class="filter-adder wp-hidden-children">
+									<h4><a href="#filter-add">+ <?php _e('Add New Filter', 'otopsi-domain'); ?></a></h4>
+									<p class="filter-adder-form wp-hidden-child">
+										<label for="filters-tab-label"><?php _e( 'Label', 'otopsi-domain' ); ?></label>
+										<input type="text" class="regular-text filter-label-input" name="filters-tab-label"><br/>
+
+										<label for="filters-tab-type"><?php _e( 'Filter on', 'otopsi-domain' ); ?></label>
+										<select  multiple="multiple" name="filters-tab-type" class="filters-select">
+										</select>
+										<br/>
+
+										<button type="button" class="button add-filter-button"><?php _e( 'Add filter', 'otopsi-domain' ); ?></button>
+										<button type="button" class="button edit-button update-filter-button"><?php _e( 'Update filter', 'otopsi-domain' ); ?></button>
+										<button type="button" class="button edit-button cancel-filter-button"><?php _e( 'Cancel', 'otopsi-domain' ); ?></button>
+									</p>
+								</div>
+
+								<a href="#" class="delete-filter-group"><span class="dashicons dashicons-dismiss"></span><?php _e( 'Remove this filter group', 'otopsi-domain'); ?></a>
+
+							</div>
+						</div>
+<?php
+		}
+?>
+					</div>
+					<input type="hidden" name="otopsi[filters]" id="otopsi[filters]" value="<?php echo $instance['filters'] ?>">
 
 				</td>
 			</tr>
 
 			<tr >
+				<th>
+					<label for="otopsi[isotopeOptions]"><?php _e( 'Isotope options', 'otopsi-domain' ); ?></label>
+					<p class="description"><?php _e( 'Enter properly formated JSON', 'otopsi-domain' ); ?></p>
+					<p class="description"><?php _e( 'If you want to use a <u>layoutMode</u> that requires JavaScript code not included in the Isotope core library, make sure you first install it using <a href="' .  admin_url( 'admin.php?page=otopsi_layout_modes' ) . '">the Layout Modes admin page</a>.', 'otopsi-domain' ); ?></p>
+				</th>
+				<td>
+					<textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" cols="70" rows="25" class="editor"><?php echo stripslashes( $instance['isotopeOptions'] ); ?></textarea>
+					<p class="description"><a href="http://isotope.metafizzy.co/options.html" target="_blank"><?php _e( 'Click here to read the documentation for Isotope options', 'otopsi-domain' ); ?></a></p>
+				</td>
+			</tr>
+
+
+			<tr >
 				<th><label for="otopsi[wrapperClass]"><?php _e( 'Wrapper CSS class' ); ?></label></th>
 				<td>
-					<input class="regular-text" id="otopsi[wrapperClass]" name="otopsi[wrapperClass]" type="text" value="<?php echo $instance['wrapperClass']; ?>">
+					<input class="regular-text otopsi-no-submit" id="otopsi[wrapperClass]" name="otopsi[wrapperClass]" type="text" value="<?php echo $instance['wrapperClass']; ?>">
 					<p class="description"><?php _e('This class name will be prepended to all the rules defined in the following field', 'otopsi-domain'); ?></p>
 				</td>
 			</tr>
@@ -261,17 +391,6 @@ class Otopsi_Renderer{
 				</td>
 			</tr>
 
-			<tr >
-				<th>
-					<label for="otopsi[isotopeOptions]"><?php _e( 'Isotope options', 'otopsi-domain' ); ?></label>
-					<p class="description"><?php _e( 'Enter properly formated JSON', 'otopsi-domain' ); ?></p>
-					<p class="description"><?php _e( 'If you want to use a <u>layoutMode</u> that requires JavaScript code not included in the Isotope core library, make sure you first install it using <a href="' .  admin_url( 'admin.php?page=otopsi_layout_modes' ) . '">the Layout Modes admin page</a>.', 'otopsi-domain' ); ?></p>
-				</th>
-				<td>
-					<textarea id="otopsi[isotopeOptions]" name="otopsi[isotopeOptions]]" cols="70" rows="25" class="editor"><?php echo stripslashes( $instance['isotopeOptions'] ); ?></textarea>
-					<p class="description"><a href="http://isotope.metafizzy.co/options.html" target="_blank"><?php _e( 'Click here to read the documentation for Isotope options', 'otopsi-domain' ); ?></a></p>
-				</td>
-			</tr>
 			</tbody>
 		</table>
 	</div> <!-- END isotope-options -->
@@ -415,35 +534,37 @@ class Otopsi_Renderer{
 <div class="gutter-sizer"></div>
 <?php
 				$i = 0;
-				if ( $posts_query->have_posts()) : while ( $posts_query->have_posts() ) : $posts_query->the_post();
-				$i++;
-				global $post;
-				//get the filtering terms for the post
-				$postTerms = wp_get_post_terms( $post->ID, $taxonomies, array( 'fields' => 'all' ) );
-				$postFilterTerms = array();
-				foreach( $postTerms as $postTerm ) {
-					//Directly match a filtering term
-					if( isset($filterSlugs[ $postTerm->term_id ]) ) {
-						$postFilterTerms[] = $postTerm->slug; 
-						continue;
-					}
+				if ( $posts_query->have_posts()) :
+					while ( $posts_query->have_posts() ) :
+						$posts_query->the_post();
+						$i++;
+						global $post;
+						//get the filtering terms for the post
+						$postTerms = wp_get_post_terms( $post->ID, $taxonomies, array( 'fields' => 'all' ) );
+						$postFilterTerms = array();
+						foreach( $postTerms as $postTerm ) {
+							//Directly match a filtering term
+							if( isset($filterSlugs[ $postTerm->term_id ]) ) {
+								$postFilterTerms[] = $postTerm->slug; 
+								continue;
+							}
 
-					//Find the parent term
-					if( isset($filterSlugs[ $postTerm->parent ]) ) {
-						$postFilterTerms[] = $filterSlugs[ $postTerm->parent ];
-						continue;
-					}
+							//Find the parent term
+							if( isset($filterSlugs[ $postTerm->parent ]) ) {
+								$postFilterTerms[] = $filterSlugs[ $postTerm->parent ];
+								continue;
+							}
 
-					//WARNING: won't be filtered properly
-					$postFilterTerms[] = $postTerm->slug;
-				}
+							//WARNING: won't be filtered properly
+							$postFilterTerms[] = $postTerm->slug;
+						}
 ?>
 <div class="item <?php echo implode(' ', $postFilterTerms); ?>">
 <?php echo Otopsi_Renderer::render_template( stripslashes( $instance['contentTemplate'] ) ); ?>
 </div>
 <?php
-endwhile;
-endif;
+					endwhile;
+				endif;
 ?>
 </div>
 </div>

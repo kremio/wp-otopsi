@@ -19,7 +19,21 @@ table.block{
 	padding-left:1em;
 }
 
-.otopsi_show_if_enabled  .sort-option{
+.otopsi_show_if_enabled  .handlediv{
+	pointer-events: none;
+}
+
+.otopsi_show_if_enabled #filter-groups-accordion{
+	margin-top: 2em;
+}
+
+
+.otopsi_show_if_enabled #filter-groups-accordion .closed .handlediv:before{
+     content: '\f140';
+}
+
+
+.otopsi_show_if_enabled  .sort-option, .otopsi_show_if_enabled .filter-group-box .filters li{
 	display: block;
 	width:17em;
 	margin: 5px 0;
@@ -30,6 +44,65 @@ table.block{
 	border-radius: 5px;
 	font-weight:bold;
 }
+
+.otopsi_show_if_enabled .filter-adder .edit-button, .otopsi_show_if_enabled .filters-js-messages, .otopsi_show_if_enabled .filter-group-template{
+	display:none;
+}
+
+.otopsi_show_if_enabled .delete-filter-group{
+	text-decoration: none;
+	color: grey;
+	float:right;
+}
+
+.otopsi_show_if_enabled .filter-adder.edit .edit-button{
+	display:inline-block;
+}
+
+.otopsi_show_if_enabled .filter-adder.edit a{
+	visibility:hidden;
+}
+
+.otopsi_show_if_enabled .filter-adder.edit .add-filter-button{
+	display:none;
+}
+
+
+.otopsi_show_if_enabled .filter-group-box .filters li span:hover{
+	cursor: pointer;
+	color: white;
+}
+
+.otopsi_show_if_enabled .filter-group-box .filters li {
+	width:100%;
+}
+
+.otopsi_show_if_enabled .filter-group-box .filters li.edit{
+	background-color:#00EBB5;
+}
+
+.otopsi_show_if_enabled .filter-group-box .filters li.warning{
+	background-color:#EB8200;
+}
+
+
+.otopsi_show_if_enabled .filters-group-wrap.warning{
+	border:1px solid #EB8200;
+}
+
+.otopsi_show_if_enabled .filter-warning{
+	display:none;
+	color:#EB8200;
+}
+
+.otopsi_show_if_enabled .filter-warning.on {
+	display:block;
+}
+
+.otopsi_show_if_enabled .filter-group-box .filters li  .delete{
+	float: right;
+}
+
 
 .otopsi_show_if_enabled  .sort-option.off{
 	opacity:0.7;
@@ -42,7 +115,7 @@ table.block{
  float:right;
 }
 
-otopsi_show_if_enabled  .sort-option span:hover{
+.otopsi_show_if_enabled  .sort-option span:hover{
 	cursor: pointer;
 }
 
@@ -59,6 +132,14 @@ otopsi_show_if_enabled  .sort-option span:hover{
  color:#000000;
 }
 
+.otopsi_show_if_enabled .wp-tab-panel{
+	padding-top: 13px;
+	padding-bottom: 13px;
+}
+
+#filters-select-source{
+	display: none;
+}
 
 
 textarea.editor{

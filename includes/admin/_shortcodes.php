@@ -61,7 +61,7 @@ if( "edit" === $screen_mode ){
 			<tr >
 				<th><label for="otopsi[scName]"><?php _e( 'Reference Name', 'otopsi-domain' ); ?></label></th>
 				<td>
-					<input class="regular-text" id="otopsi[scName]" name="otopsi[scName]" type="text" value="<?php echo $currentSc['scName']; ?>">
+					<input class="regular-text otopsi-no-submit" id="otopsi[scName]" name="otopsi[scName]" type="text" value="<?php echo $currentSc['scName']; ?>">
 					<p class="description"><?php _e( 'Giving a meaningful name to the shortcode makes it easier to know what it does!', 'otopsi-domain' ); ?></p>
 				</td>
 			</tr>

@@ -58,6 +58,8 @@ if ( is_admin() ) {
 	add_action( 'load-post-new.php', 'load_otopsi' );
 	//Setup AJAX handler to retrieve the terms of a taxonomy on the client side
 	add_action( 'wp_ajax_otopsi_get_taxonomy_terms', array( 'Otopsi', 'get_taxonomy_terms' ) );
+	//Setup AJAX handler to retrieve the filters that can be applied to the given content search settings
+	add_action( 'wp_ajax_otopsi_get_possible_filters', array( 'Otopsi', 'get_possible_filters' ) );
 	//Setup AJAX handler to download and install an Isotope layout library
 	add_action( 'wp_ajax_otopsi_check_credentials_for_download', array( 'Otopsi', 'check_credentials_for_download' ) );
 	//Add an admin menu
