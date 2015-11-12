@@ -245,6 +245,12 @@ class Otopsi_Renderer{
 								<input type="text" class="regular-text filter-group-name-input" name="group-tab-name"><br/>
 								<label for="group-tab-display">
 								<input name="group-tab-display" type="checkbox" value="hide"><?php _e( 'Display group name', 'otopsi-domain' ); ?></label>
+								<br/>
+								<label for="group-tab-operator"><?php _e( 'Add or Combine with other filters ?', 'otopsi-domain' ); ?></label>
+								<select name="group-tab-operator">
+									<option value="combine"><?php _e( 'Combine', 'otopsi-domain' ); ?></option>
+									<option value="add"><?php _e( 'Add', 'otopsi-domain' ); ?></option>
+								</select>
 							</div>
 
 							<div id="filters-tab-" class="wp-tab-panel">
@@ -297,7 +303,12 @@ class Otopsi_Renderer{
 									<label for="group-tab-name"><?php _e( 'Group name', 'otopsi-domain' ); ?></label>
 									<input type="text" class="regular-text filter-group-name-input" name="group-tab-name" value="<?php echo $group_name; ?>"><br/>
 									<label for="group-tab-display">
-									<input name="group-tab-display" type="checkbox" value="hide" <?php echo '1' == $group_data[ 'display_group_name' ] ? 'checked="true"' : ''; ?>><?php _e( 'Display group name', 'otopsi-domain' ); ?></label>
+									<input name="group-tab-display" type="checkbox" value="hide" <?php echo '1' == $group_data[ 'display_group_name' ] ? 'checked="true"' : ''; ?>><?php _e( 'Display group name', 'otopsi-domain' ); ?></label><br/>
+									<label for="group-tab-operator"><?php _e( 'Add or Combine with other filters ?', 'otopsi-domain' ); ?></label>
+									<select name="group-tab-operator">
+										<option value="combine"<?php echo 'combine' == $group_data[ 'operator' ] ? ' selected="true"' : ''; ?>><?php _e( 'Combine', 'otopsi-domain' ); ?></option>
+										<option value="add"<?php echo 'combine' == $group_data[ 'operator' ] ? ' selected="true"' : ''; ?>><?php _e( 'Add', 'otopsi-domain' ); ?></option>
+									</select>
 								</div>
 
 								<div id="filters-tab-" class="wp-tab-panel">
@@ -506,58 +517,59 @@ class Otopsi_Renderer{
 			if( ! Otopsi::is_default_layout_mode(  $matches[1]) ){ //Add the script to the page
 				wp_enqueue_script(   $matches[1] . '-js', plugins_url( 'js/layout-modes/' .  $matches[1] . '.js',  dirname(__FILE__) ), NULL, OTOPSI_VERSION );
 			}
-
 		}
+
+		$filter_groups = Otopsi::expand_filters_setting( $instance );
 		//start output buffering
 		ob_start();
 		//Wrapping DIV
 ?>
 <div class="<?php echo $instance['wrapperClass']; ?> otopsi otopsi-init" data-otopsi="<?php echo $isotope_options_json; ?>">
 <?php
-		//Show filtering options if enabled
-		$filterSlugs = array();
-		if( isset($instance['filtersEnabled']) && $instance['filtersEnabled'] != 0 ) :
+		$enabled_filters = array(
+			'categories' => false,
+			'tags' => false,
+			'authors' => false,
+			'posttypes' => false
+		);
+		//Create filter groups
+		foreach( $filter_groups as $group_name => $group_data ){
 ?>
-<div class="otopsi-filters button-group">
-	<button data-filter="*" class="is-checked"><?php _e('Show all','otopsi-domain'); ?></button>
+	<div class="otopsi-filter-group">
+		<p class="group_name<?php echo '0' == $group_data[ 'display_group_name' ] ? 'hidden' : ''; ?>"><?php echo $group_name; ?></p>
+		<div class="button-group <?php echo $group_data[ 'operator' ]; ?>">
 <?php
-			foreach($filters as $term) {
-				$filterSlugs[$term['term_id']] = $term['slug'];
+			foreach( $group_data[ 'filters' ] as $filter_label => $filter_types ){
+				Otopsi::get_enabled_filter_types_from_settings( $filter_types,  $enabled_filters );
+				$filter_types = explode( ',', $filter_types );
+				for( $i = 0 ; $i < count( $filter_types ); $i++ ){
+					$filter_types[ $i ] = Otopsi::format_filter_term( $filter_types[ $i ], '.'); //already prefixed
+					if( '.' == $filter_types[ $i ] ){ //special case of the filter that does nothing!
+						$filter_types[ $i ] = '';
+					}
+				}
+
 ?>
-<button data-filter=".<?php echo $term['slug']; ?>"><?php echo $term['name']; ?></button>
-<?php } ?>
-</div>
-<?php endif; ?>
+			<button class="button<?php echo '' === $filter_types[0] ? ' is-checked' : ''; ?>" data-filter="<?php echo implode( ',', $filter_types ); ?>"><?php echo $filter_label; ?></button>
+<?php
+			}
+?>
+		</div>
+	</div>
+<?php
+		}
+?>
 
 <div class="otopsi-container">
 <div class="grid-sizer"></div>
 <div class="gutter-sizer"></div>
 <?php
-				$i = 0;
 				if ( $posts_query->have_posts()) :
 					while ( $posts_query->have_posts() ) :
 						$posts_query->the_post();
-						$i++;
 						global $post;
-						//get the filtering terms for the post
-						$postTerms = wp_get_post_terms( $post->ID, $taxonomies, array( 'fields' => 'all' ) );
-						$postFilterTerms = array();
-						foreach( $postTerms as $postTerm ) {
-							//Directly match a filtering term
-							if( isset($filterSlugs[ $postTerm->term_id ]) ) {
-								$postFilterTerms[] = $postTerm->slug; 
-								continue;
-							}
-
-							//Find the parent term
-							if( isset($filterSlugs[ $postTerm->parent ]) ) {
-								$postFilterTerms[] = $filterSlugs[ $postTerm->parent ];
-								continue;
-							}
-
-							//WARNING: won't be filtered properly
-							$postFilterTerms[] = $postTerm->slug;
-						}
+						//gather the filtering terms for the post
+						$postFilterTerms = Otopsi::get_post_filter_terms( $post, $enabled_filters );
 ?>
 <div class="item <?php echo implode(' ', $postFilterTerms); ?>">
 <?php echo Otopsi_Renderer::render_template( stripslashes( $instance['contentTemplate'] ) ); ?>

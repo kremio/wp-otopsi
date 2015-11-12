@@ -335,6 +335,7 @@
 	getFilterGroupSettingsString: function( $filterGroup ){
 		var settingsString = $filterGroup.handle().text(); //group name
 		settingsString += $filterGroup.inside().find( 'input[name="group-tab-display"]:checked' ).length > 0 ? ";1" : ";0"; //display group name?
+		settingsString += ";" + $filterGroup.inside().find( 'select[name="group-tab-operator"]' ).val(); //how the filters of this group work with other filters
 		//filters
 		$filterGroup.inside().find('.filters li').each(function(){
 			var $this = jQuery( this );
@@ -376,7 +377,7 @@
 			}
 		});
 
-		$filterGroup.inside().find( 'input[name="group-tab-display"]' ).change(function(){
+		$filterGroup.inside().find( 'select[name="group-tab-operator"], input[name="group-tab-display"]' ).change(function(){
 			//Update filter settings hidden field
 			Otopsi.updateOtopsiFilters();
 		});
